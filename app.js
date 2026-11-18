@@ -885,7 +885,6 @@
       var id = txt("yt:videoId") || txt("id").replace("yt:video:", "");
       var title = clean(txt("title"));
       if (!id || !title) return;
-      if (SKIP_RE.test(title)) return;
       var stamp = Date.parse(txt("published"));
       var stats = n.getElementsByTagName("media:statistics")[0];
       out.push({
@@ -983,6 +982,7 @@
       if ((c.ts || 0) > cook.lastFetch) cook.lastFetch = c.ts || 0;
       c.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
         .forEach(function (it) {
+          if (SKIP_RE.test(it.title)) return;   /* 요리 영상이 아니면 화면에 넣지 않음 */
           add(ch.id, {
             id: it.id, name: "", title: it.title,
             channel: ch.short || ch.name, ch: ch.id,
