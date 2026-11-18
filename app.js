@@ -673,14 +673,15 @@
       state.shown = PAGE;
       state.note = null;
       state.lastFetch = Date.now();
-      if (tab === "usa" && state.items.length < 3) {
-        /* 국제면이 비어 있으면 전체 뉴스에서 미국 기사만 골라 채웁니다 */
+      if (tab === "usa") {
+        /* 국제면에 있는 미국 기사를, 전체 뉴스에 있는 미국 기사와 합칩니다 */
         var allCache = store(cacheKey("all"));
         if (allCache && allCache.items && allCache.items.length) {
           var extra = shapeFor("usa", allCache.items);
           var seen = {};
           state.items.forEach(function (it) { seen[it.link] = 1; });
           extra.forEach(function (it) { if (!seen[it.link]) { seen[it.link] = 1; state.items.push(it); } });
+          state.items.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
         }
       }
       store(cacheKey(tab), { ts: Date.now(), items: state.items });
