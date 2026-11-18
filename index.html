@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>명자채널</title>
-  <meta name="description" content="김포 날씨와 여러 언론사 오늘의 뉴스, 코뿔소 TV 최신 영상, 유튜브 인기 요리 영상을 큰 글씨로 보는 명자채널" />
+  <meta name="description" content="김포 날씨와 삼성전자·SK하이닉스 시세, 여러 언론사 오늘의 뉴스, 코뿔소 TV 최신 영상, 유튜브 인기 요리 영상을 큰 글씨로 보는 명자채널" />
   <meta name="theme-color" content="#12314c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
   <div class="shell">
@@ -40,6 +40,31 @@
     </div>
 
     <main>
+      <!-- 삼성전자·SK하이닉스 시세 (날씨 카드 바로 위) -->
+      <section class="stocks" id="stockCard" aria-labelledby="stockTitle">
+        <div class="s-head">
+          <h2 class="s-title" id="stockTitle">📈 삼성전자 · SK하이닉스</h2>
+          <button type="button" class="s-refresh" id="stockRefresh">↻ 새로고침</button>
+        </div>
+        <div class="s-list" id="stockList">
+          <div class="s-row" id="stock005930" data-dir="even">
+            <span class="s-name">삼성전자</span>
+            <span class="s-quote">
+              <span class="s-price" id="price005930">--<span class="won">원</span></span>
+              <span class="s-change" id="change005930">시세 확인 중</span>
+            </span>
+          </div>
+          <div class="s-row" id="stock000660" data-dir="even">
+            <span class="s-name">SK하이닉스</span>
+            <span class="s-quote">
+              <span class="s-price" id="price000660">--<span class="won">원</span></span>
+              <span class="s-change" id="change000660">시세 확인 중</span>
+            </span>
+          </div>
+        </div>
+        <div class="s-foot" id="stockTime">시세를 불러오고 있어요…</div>
+      </section>
+
       <!-- 김포 날씨 -->
       <section class="weather" id="weatherCard" aria-labelledby="weatherTitle">
         <div class="w-head">
@@ -174,7 +199,7 @@
       </details>
 
       <p class="foot-note">
-        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스·SBS·매일경제·동아일보·한겨레·머니투데이<br />코뿔소 TV·요리 영상: 유튜브<br />
+        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스·SBS·매일경제·동아일보·한겨레·머니투데이<br />주식 시세: 네이버 금융·다음 금융·트레이딩뷰 · 코뿔소 TV·요리 영상: 유튜브<br />
         기사를 누르면 언론사 원문이 새 창에서 열립니다.
       </p>
     </main>
@@ -191,7 +216,7 @@
     </div>
   </div>
 
-  <script src="videos.js?v=7"></script>
-  <script src="app.js?v=11"></script>
+  <script src="videos.js?v=8"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

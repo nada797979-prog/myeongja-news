@@ -37,10 +37,12 @@
     return node;
   }
 
-  function fetchWithTimeout(url, ms) {
+  function fetchWithTimeout(url, ms, opts) {
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, ms || 9000);
-    return fetch(url, { signal: ctrl.signal, cache: "no-store" })
+    var init = { signal: ctrl.signal, cache: "no-store" };
+    if (opts) Object.keys(opts).forEach(function (k) { init[k] = opts[k]; });
+    return fetch(url, init)
       .then(function (res) {
         clearTimeout(timer);
         if (!res.ok) throw new Error("HTTP " + res.status);
@@ -299,6 +301,212 @@
     loadWeather(true);
     setTimeout(function () { refreshBtn.textContent = "↻ 새로고침"; }, 2500);
   });
+
+  /* ------------------------------------------------------------------ *
+   * 2-1. 삼성전자·SK하이닉스 시세 (날씨 카드 바로 위 · 오르면 빨강 / 내리면 파랑)
+   *    · 네이버 금융·다음 금융이 가장 빠르지만, 브라우저에서는 그대로 부를 수
+   *      없어(CORS 막음) 통로(프록시)를 거칩니다. 통로가 막혀도 화면이 비지 않게
+   *      트레이딩뷰 공개 시세를 먼저 받습니다.
+   *      (2026-11-19 브라우저에서 하나씩 받아 보고 되는 길만 넣었습니다)
+   * ------------------------------------------------------------------ */
+  var STOCKS = [
+    { code: "005930", name: "삼성전자", tv: "KRX:005930", yahoo: "005930.KS" },
+    { code: "000660", name: "SK하이닉스", tv: "KRX:000660", yahoo: "000660.KS" }
+  ];
+  var STOCK_CACHE = "mj_stocks_v1";
+  var STOCK_TTL = 2 * 60 * 1000;   /* 2분마다 새 시세 */
+  var stockLoading = false;
+  var stockPrio = 99;              /* 작을수록 더 좋은 자료 (1 실시간, 2~3 지연) */
+
+  function stockNumber(v) {
+    if (v == null) return null;
+    var s = String(v).trim();
+    if (!s) return null;
+    var n = Number(s.replace(/[^0-9.\-]/g, ""));
+    return isFinite(n) ? n : null;
+  }
+
+  function fmtWon(n) {
+    if (n == null || !isFinite(n)) return "--";
+    return String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  /* 가격·등빽폭·등락률을 한 줄로 맞춥니다 (하나라도 비면 나머지로 계산) */
+  function quoteOf(code, price, abs, pct) {
+    if (price == null || price <= 0) return null;
+    if (abs == null && pct != null && pct !== 0) {
+      var prev = price / (1 + pct / 100);
+      abs = Math.round(price - prev);
+    }
+    return { code: code, price: price, abs: abs == null ? 0 : Math.round(abs), pct: pct == null ? null : pct };
+  }
+
+  /* 네이버·다음은 CORS가 없어 통로를 거칩니다. 막힌 통로는 건너뜁니다. */
+  var STOCK_PROXIES = [
+    function (u) { return "https://api.cors.lol/?url=" + encodeURIComponent(u); },
+    function (u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+    function (u) { return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+  ];
+  function viaStockProxy(url, ms, limit) {
+    var list = STOCK_PROXIES.slice(0, limit || STOCK_PROXIES.length);
+    return list.reduce(function (chain, wrap) {
+      return chain.catch(function () { return fetchWithTimeout(wrap(url), ms || 8000); });
+    }, Promise.reject(new Error("start")));
+  }
+
+  function fetchTradingViewQuotes() {
+    /* GET 한 번에 종목 하나 — 브라우저가 바로 부를 수 있는 유일한 길(2026-11-19 확인) */
+    return Promise.all(STOCKS.map(function (s) {
+      var api = "https://scanner.tradingview.com/symbol?symbol=" + encodeURIComponent(s.tv) +
+        "&fields=close,change,change_abs";
+      return fetchWithTimeout(api, 8000).then(function (txt) {
+        var d = JSON.parse(txt);
+        if (!d) throw new Error("tv empty");
+        return quoteOf(s.code, stockNumber(d.close), stockNumber(d.change_abs), stockNumber(d.change));
+      });
+    })).then(function (rows) {
+      rows = rows.filter(function (r) { return !!r; });
+      if (rows.length !== STOCKS.length) throw new Error("tv partial");
+      return { rows: rows, source: "트레이딩뷰", delayed: true, prio: 2 };
+    });
+  }
+
+  function fetchNaverQuotes(limit) {
+    var api = "https://polling.finance.naver.com/api/realtime/domestic/stock/" +
+      STOCKS.map(function (s) { return s.code; }).join(",");
+    return viaStockProxy(api, 8000, limit).then(function (txt) {
+      var d = JSON.parse(txt);
+      if (!d || !d.datas || !d.datas.length) throw new Error("naver empty");
+      var rows = [];
+      STOCKS.forEach(function (s) {
+        var hit = null;
+        d.datas.forEach(function (it) { if (it.itemCode === s.code) hit = it; });
+        if (!hit) return;
+        var dirName = hit.compareToPreviousPrice ? String(hit.compareToPreviousPrice.name) : "";
+        var sign = /RISE|UPPER/.test(dirName) ? 1 : (/FALL|LOWER/.test(dirName) ? -1 : 0);
+        var abs = stockNumber(hit.compareToPreviousClosePrice);
+        var pct = stockNumber(hit.fluctuationsRatio);
+        var row = quoteOf(s.code, stockNumber(hit.closePrice),
+          abs == null ? null : abs * sign, pct == null ? null : pct * sign);
+        if (row) rows.push(row);
+      });
+      if (rows.length !== STOCKS.length) throw new Error("naver partial");
+      return { rows: rows, source: "네이버 금융", delayed: false, prio: 1 };
+    });
+  }
+
+  function fetchDaumQuotes() {
+    return Promise.all(STOCKS.map(function (s) {
+      return viaStockProxy("https://finance.daum.net/api/quotes/A" + s.code + "?summary=false", 8000)
+        .then(function (txt) { return { s: s, d: JSON.parse(txt) }; });
+    })).then(function (list) {
+      var rows = [];
+      list.forEach(function (o) {
+        var d = o.d || {};
+        var sign = /RISE|UPPER/.test(String(d.change)) ? 1 : (/FALL|LOWER/.test(String(d.change)) ? -1 : 0);
+        var abs = stockNumber(d.changePrice);
+        var pct = stockNumber(d.changeRate);
+        var row = quoteOf(o.s.code, stockNumber(d.tradePrice),
+          abs == null ? null : abs * sign, pct == null ? null : pct * sign);
+        if (row) rows.push(row);
+      });
+      if (rows.length !== STOCKS.length) throw new Error("daum partial");
+      return { rows: rows, source: "다음 금융", delayed: false, prio: 1 };
+    });
+  }
+
+  function fetchYahooQuotes() {
+    return Promise.all(STOCKS.map(function (s) {
+      var api = "https://query1.finance.yahoo.com/v8/finance/chart/" + s.yahoo + "?interval=1d&range=1d";
+      return viaStockProxy(api, 8000).then(function (txt) {
+        var meta = JSON.parse(txt).chart.result[0].meta || {};
+        var price = stockNumber(meta.regularMarketPrice);
+        var prev = stockNumber(meta.chartPreviousClose != null ? meta.chartPreviousClose : meta.previousClose);
+        var abs = (price != null && prev != null) ? price - prev : null;
+        var pct = (abs != null && prev) ? (abs / prev) * 100 : null;
+        return quoteOf(s.code, price, abs, pct);
+      });
+    })).then(function (rows) {
+      rows = rows.filter(function (r) { return !!r; });
+      if (rows.length !== STOCKS.length) throw new Error("yahoo partial");
+      return { rows: rows, source: "야후 파이낸스", delayed: true, prio: 3 };
+    });
+  }
+
+  function renderStocks(data) {
+    if (!data || !data.rows || !data.rows.length) return;
+    data.rows.forEach(function (r) {
+      var row = document.getElementById("stock" + r.code);
+      var priceNode = document.getElementById("price" + r.code);
+      var changeNode = document.getElementById("change" + r.code);
+      if (!row || !priceNode || !changeNode) return;
+      var dir = r.abs > 0 ? "up" : (r.abs < 0 ? "down" : "even");
+      row.setAttribute("data-dir", dir);
+      priceNode.textContent = fmtWon(r.price);
+      priceNode.appendChild(el("span", { class: "won", text: "원" }));
+      if (dir === "even") {
+        changeNode.textContent = "보합 (0.00%)";
+      } else {
+        var sign = dir === "up" ? "+" : "-";
+        var pctTxt = r.pct == null ? "" : " (" + sign + Math.abs(r.pct).toFixed(2) + "%)";
+        changeNode.textContent = (dir === "up" ? "▲ " : "▼ ") + fmtWon(r.abs) + "원" + pctTxt;
+      }
+    });
+    setText("stockTime", "🕘 " + hhmm(data.ts || Date.now()) + " 기준 · " + data.source +
+      (data.delayed ? " (장중 20분 지연)" : ""));
+  }
+
+  function acceptStock(data) {
+    if (!data || !data.rows || !data.rows.length) return;
+    if (data.prio >= stockPrio) return;
+    stockPrio = data.prio;
+    data.ts = Date.now();
+    renderStocks(data);
+    store(STOCK_CACHE, data);
+  }
+
+  function loadStocks(force) {
+    var cached = store(STOCK_CACHE);
+    if (cached && cached.rows) renderStocks(cached);
+    if (!force && cached && cached.ts && Date.now() - cached.ts < STOCK_TTL) return;
+    if (stockLoading) return;
+    stockLoading = true;
+    stockPrio = 99;
+
+    function finish() {
+      stockLoading = false;
+      if (stockPrio === 99) {
+        setText("stockTime", cached && cached.rows
+          ? "지난번 시세를 보여드려요 · " + hhmm(cached.ts) + " 기준"
+          : "⚠️ 지금은 시세를 못 받았어요. 잠시 뒤 ↻ 새로고침을 눌러 주세요.");
+      }
+    }
+
+    /* 1) 트레이딩뷰: 브라우저에서 바로 받아지는 가장 확실한 길 */
+    fetchTradingViewQuotes().then(acceptStock).catch(function () {
+      /* 2) 막히면 통로를 거쳐 네이버 → 다음 → 야후 */
+      return fetchNaverQuotes().then(acceptStock)
+        .catch(function () { return fetchDaumQuotes().then(acceptStock); })
+        .catch(function () { return fetchYahooQuotes().then(acceptStock); });
+    }).then(function () {
+      /* 3) 숫자가 보이는 동안, 실시간(네이버) 시세를 뒤에서 한 번 더 시도 */
+      if (stockPrio > 1) return fetchNaverQuotes(1).then(acceptStock).catch(function () { /* 통로가 막혔으면 그대로 */ });
+    }).then(finish, finish);
+  }
+
+  var stockRefreshBtn = $("#stockRefresh");
+  if (stockRefreshBtn) stockRefreshBtn.addEventListener("click", function () {
+    stockRefreshBtn.textContent = "불러오는 중…";
+    loadStocks(true);
+    setTimeout(function () { stockRefreshBtn.textContent = "↻ 새로고침"; }, 2500);
+  });
+
+  setInterval(function () {          /* 화면을 보고 있을 때 1분마다 확인, 2분 지났으면 새로 받기 */
+    if (document.hidden) return;
+    var c = store(STOCK_CACHE);
+    if (!c || !c.ts || Date.now() - c.ts >= STOCK_TTL) loadStocks(false);
+  }, 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) loadStocks(false); });
 
   /* ------------------------------------------------------------------ *
    * 3. 뉴스 (여러 언론사 RSS · 사진 있는 기사만 · 스포츠 제외 · 1시간 자동 업데이트)
@@ -904,12 +1112,14 @@
       var newsPanel = $("#newsPanel");
       var recipePanel = $("#recipePanel");
       var weatherCard = $("#weatherCard");
+      var stockCard = $("#stockCard");
       var ytBanner = $("#ytBanner");
       var rhinoPanel = $("#rhinoPanel");
       if (tab === "recipe") {
         if (newsPanel) newsPanel.hidden = true;
         if (recipePanel) recipePanel.hidden = false;
         if (weatherCard) weatherCard.hidden = true;
+        if (stockCard) stockCard.hidden = true;
         if (ytBanner) ytBanner.hidden = true;
         if (rhinoPanel) rhinoPanel.hidden = true;
         renderVideos();
@@ -918,6 +1128,7 @@
         if (recipePanel) recipePanel.hidden = true;
         if (newsPanel) newsPanel.hidden = false;
         if (weatherCard) weatherCard.hidden = false;
+        if (stockCard) stockCard.hidden = false;
         if (ytBanner) ytBanner.hidden = false;
         if (rhinoPanel) rhinoPanel.hidden = false;
         renderRhino();
@@ -1042,7 +1253,7 @@
       return;
     }
     data.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
-      .slice(0, 3).forEach(function (v) { list.appendChild(rhinoCard(v)); });
+      .slice(0, 1).forEach(function (v) { list.appendChild(rhinoCard(v)); });   /* 최신 영상 1개만 */
     setText("rhinoAuto", "🔄 1시간마다 자동 업데이트" + (data.ts ? " · " + hhmm(data.ts) + " 업데이트" : ""));
   }
 
@@ -1481,6 +1692,7 @@
   /* ------------------------------------------------------------------ *
    * 6. 시작
    * ------------------------------------------------------------------ */
+  loadStocks(false);       /* 삼성전자·SK하이닉스 시세 (날씨 카드 위) */
   loadWeather(false);
   loadNews("all", false);
   renderRhino();           /* 저장해 둔 코뿔소 TV 영상으로 먼저 채우고, 새 영상은 이어서 받아옵니다 */

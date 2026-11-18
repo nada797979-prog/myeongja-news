@@ -169,6 +169,103 @@ button { font-family: inherit; }
 
 main { padding: 0.35rem 0.7rem 0; }
 
+/* ---------- 주식 시세 카드 (삼성전자·SK하이닉스) ---------- */
+.stocks {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem 0.55rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 0.75rem;
+}
+.s-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.s-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--navy);
+  letter-spacing: -0.02em;
+}
+.s-refresh {
+  min-height: 2.2rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 2px solid #cfc7b6;
+  background: #fff;
+  color: #24323f;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.s-list {
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.s-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 14px;
+  padding: 0.45rem 0.6rem;
+  background: #f7f5f0;
+  border-left: 6px solid #c9c2b3;
+}
+.s-name {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #24323f;
+  letter-spacing: -0.02em;
+}
+.s-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  text-align: right;
+}
+.s-price {
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.s-price .won {
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-left: 0.1rem;
+}
+.s-change {
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.s-row[data-dir="up"] { border-left-color: #d32f2f; background: #fdf3f2; }
+.s-row[data-dir="up"] .s-price,
+.s-row[data-dir="up"] .s-change { color: #cf2027; }
+.s-row[data-dir="down"] { border-left-color: #1565c0; background: #f1f7fd; }
+.s-row[data-dir="down"] .s-price,
+.s-row[data-dir="down"] .s-change { color: #1358a8; }
+.s-row[data-dir="even"] .s-price { color: #24323f; }
+.s-row[data-dir="even"] .s-change { color: #5b6672; }
+.s-foot {
+  margin-top: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.35;
+}
+
 /* ---------- 날씨 카드 ---------- */
 .weather {
   background: linear-gradient(165deg, #13395c 0%, #205b8a 58%, #2f79ae 100%);
