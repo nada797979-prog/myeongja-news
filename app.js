@@ -980,6 +980,7 @@
     CHANNELS.forEach(function (ch) {
       var c = store(FEED_KEY + ch.id);
       if (!c || !c.items) return;
+      if ((c.ts || 0) > cook.lastFetch) cook.lastFetch = c.ts || 0;
       c.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
         .forEach(function (it) {
           add(ch.id, {
