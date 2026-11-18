@@ -836,6 +836,7 @@
       return !c || !c.items || !c.items.length || (now - (c.ts || 0) > NEWS_TTL);
     });
     if (!due.length) return;
+    state.lastTry = now;
 
     var got = 0;
     runQueue(due, 2, function (f) {
@@ -877,7 +878,9 @@
     if (document.hidden) return;
     if (state.tab === "recipe") return; /* 요리 화면에서는 뉴스를 받지 않음 */
     var last = state.lastFetch || 0;
-    if (Date.now() - last >= NEWS_TTL) loadNews(state.tab, true);
+    if (Date.now() - last < NEWS_TTL) return;
+    if (Date.now() - (state.lastTry || 0) < 10 * 60 * 1000) return; /* 막혔을 때 5분마다 두드리지 않게 */
+    loadNews(state.tab, true);
   }
   setInterval(refreshIfStale, NEWS_TTL);          /* 60분마다 */
   setInterval(refreshIfStale, 5 * 60 * 1000);     /* 잠들었다 깨어난 경우 대비 5분마다 확인 */
@@ -1006,7 +1009,7 @@
       href: "https://www.youtube.com/watch?v=" + v.id,
       target: "_blank",
       rel: "noopener noreferrer",
-      "aria-label": v.title + " (새 창에서 유튜브로 보기)"
+      "aria-label": cookTitle(v.title) + " (새 창에서 유튜브로 보기)"
     });
     var fig = el("figure", { class: "r-thumb" });
     var img = el("img", {
