@@ -312,7 +312,7 @@
   var PAGE = 12;
   var state = { tab: "all", items: [], shown: PAGE, note: null, reqId: 0, lastFetch: 0 };
 
-  function cacheKey(tab) { return "mj_news_v3_" + tab; }
+  function cacheKey(tab) { return "mj_news_v4_" + tab; }
 
   /* --- 스포츠 기사 거르기 --------------------------------------------- */
   /* 연합뉴스 기사 주소 끝 4자리가 분야 코드입니다. 0007·1007 이 스포츠입니다. */
