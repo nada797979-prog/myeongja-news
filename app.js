@@ -391,7 +391,10 @@
         if (row) rows.push(row);
       });
       if (rows.length !== STOCKS.length) throw new Error("naver partial");
-      return { rows: rows, source: "네이버 금융", delayed: false, prio: 1 };
+      /* 장 시작 전(PREOPEN)의 네이버 자료는 전일 종가를 '보합 0%'로 보여 주어
+         어제 오르고 내린 폭을 가립니다. 그래서 그때는 뒤 순서로 미룹니다. */
+      var pre = String((d.datas[0] || {}).marketStatus || "") === "PREOPEN";
+      return { rows: rows, source: "네이버 금융", delayed: false, prio: pre ? 4 : 1 };
     });
   }
 

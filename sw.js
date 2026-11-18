@@ -1,7 +1,7 @@
 /* 명자뉴스 채널 서비스 워커
    - 화면 파일도 '인터넷 먼저'로 받아 새 버전이 바로 반영되게 (실패하면 저장해 둔 화면 사용)
    - 뉴스·날씨 같은 외부 데이터는 항상 새로 시도하고, 실패하면 캐시 사용 */
-const CACHE = "myeongja-news-v9";
+const CACHE = "myeongja-news-v10";
 const SHELL = [
   "./",
   "./index.html",
