@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <div class="shell">
@@ -113,36 +113,29 @@
 
       <!-- 추천요리 -->
       <section id="recipePanel" hidden aria-label="추천요리">
-        <div class="recipe-search">
-          <label for="recipeInput">무슨 요리를 찾으세요?</label>
-          <div class="search-row">
-            <input id="recipeInput" type="search" inputmode="search" autocomplete="off"
-                   placeholder="예) 된장찌개" aria-label="요리 검색어" />
-            <button type="button" class="btn" id="recipeSearchBtn">검색</button>
-          </div>
-          <div class="chips" id="recipeChips" role="group" aria-label="요리 종류">
-            <button type="button" data-kind="" aria-pressed="true">전체</button>
-            <button type="button" data-kind="국·찌개" aria-pressed="false">국·찌개</button>
-            <button type="button" data-kind="반찬" aria-pressed="false">반찬</button>
-            <button type="button" data-kind="볶음·구이" aria-pressed="false">볶음·구이</button>
-            <button type="button" data-kind="찜·조림" aria-pressed="false">찜·조림</button>
-            <button type="button" data-kind="밥·면" aria-pressed="false">밥·면</button>
-          </div>
-          <div class="external-links" id="recipeExternal" hidden>
-            <div class="ext-note" id="extNote">유튜브에서 더 찾아보세요</div>
-            <a class="ext-btn youtube" id="extYoutube" href="#" target="_blank" rel="noopener">▶️ 유튜브에서 요리 영상 찾기</a>
-            <a class="ext-btn mango" id="extMango" href="#" target="_blank" rel="noopener">🟠 만개의레시피에서 찾기</a>
-          </div>
-        </div>
-
         <div class="news-head" style="margin-top:0.2rem">
           <div class="news-head-left">
             <h2 id="recipeTitle">오늘 뭐 해 먹지?</h2>
-            <span class="auto-note">🎬 유명 요리 선생님 영상</span>
+            <span class="auto-note" id="recipeAuto">🔄 1시간마다 자동 업데이트</span>
           </div>
-          <span class="news-count" id="recipeCount"></span>
+          <div class="head-right">
+            <span class="news-count" id="recipeCount"></span>
+            <button type="button" class="mini-refresh" id="recipeRefresh">↻ 새로고침</button>
+          </div>
         </div>
+
+        <div class="chips" id="recipeChips" role="group" aria-label="요리 종류">
+          <button type="button" data-kind="" aria-pressed="true">전체</button>
+          <button type="button" data-kind="국·찌개" aria-pressed="false">국·찌개</button>
+          <button type="button" data-kind="반찬" aria-pressed="false">반찬</button>
+          <button type="button" data-kind="볶음·구이" aria-pressed="false">볶음·구이</button>
+          <button type="button" data-kind="찜·조림" aria-pressed="false">찜·조림</button>
+          <button type="button" data-kind="밥·면" aria-pressed="false">밥·면</button>
+          <button type="button" data-kind="그 외" aria-pressed="false">그 외</button>
+        </div>
+
         <div class="recipe-list" id="recipeList"></div>
+        <p class="recipe-foot" id="recipeFoot">유명 요리 선생님 10곳의 새 영상을 한 시간마다 새로 골라 드려요.</p>
       </section>
 
       <!-- 홈 화면에 추가 -->
@@ -186,7 +179,7 @@
     </div>
   </div>
 
-  <script src="videos.js?v=2"></script>
-  <script src="app.js?v=4"></script>
+  <script src="videos.js?v=3"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

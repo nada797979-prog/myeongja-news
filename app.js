@@ -796,8 +796,7 @@
         if (weatherCard) weatherCard.hidden = true;
         if (ytBanner) ytBanner.hidden = true;
         renderVideos();
-        var input = $("#recipeInput");
-        if (input) { try { input.focus({ preventScroll: true }); } catch (e) {} }
+        loadCookFeeds(false);
       } else {
         if (recipePanel) recipePanel.hidden = true;
         if (newsPanel) newsPanel.hidden = false;
@@ -808,43 +807,235 @@
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
     });
   });
-
   /* ------------------------------------------------------------------ *
-   * 4. 추천요리 — 유튜브 인기 요리 영상
+   * 4. 추천요리 — 유명 요리 채널의 새 영상 + 검증된 영상 (1시간마다 새 조합)
+   *    · 채널 10곳의 유튜브 공개 RSS를 CORS 통로로 받아 최신 영상을 모읍니다.
+   *    · 채널마다 돌아가며 골라, 매시 정시가 지나면 다른 영상 조합이 됩니다.
+   *    · 화면 목록은 60분(1시간)마다, 채널 RSS는 3시간마다 새로 받습니다.
    * ------------------------------------------------------------------ */
-  var videos = window.COOK_VIDEOS || [];
-  var rState = { query: "", kind: "" };
+  var CHANNELS = window.COOK_CHANNELS || [];
+  var POOL = window.COOK_VIDEOS || [];
+  var COOK_TTL = 60 * 60 * 1000;      /* 보여주는 영상 조합을 바꾸는 주기 = 1시간 */
+  var FEED_TTL = 3 * 60 * 60 * 1000;  /* 한 채널의 RSS를 다시 받는 주기 = 3시간 */
+  var MIX_COUNT = 15;                 /* 한 번에 보여줄 영상 수 */
+  var MAX_PER_CHANNEL = 2;            /* 한 채널이 차지하는 최대 칸 수 */
+  var FEED_KEY = "mj_cook_feed_v1_";
 
-  function norm(s) { return String(s || "").replace(/\s+/g, "").toLowerCase(); }
+  var cook = { kind: "", hour: -1, items: [], lastFetch: 0, loading: false, tried: {}, fresh: 0 };
 
-  function matchVideo(v, q) {
-    if (!q) return true;
-    var nq = norm(q);
-    if (norm(v.name).indexOf(nq) >= 0) return true;
-    if (norm(v.title).indexOf(nq) >= 0) return true;
-    if (norm(v.channel).indexOf(nq) >= 0) return true;
-    if (norm(v.kind).indexOf(nq) >= 0) return true;
-    if ((v.tags || []).some(function (t) { return norm(t).indexOf(nq) >= 0; })) return true;
-    return false;
+  function cookHour() { return Math.floor(Date.now() / COOK_TTL); }
+
+  function cookRng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
-  var MANGO = "https://www.10000recipe.com/recipe/list.html?q=";
-  var YOUTUBE = "https://m.youtube.com/results?search_query=";
+  /* 제목으로 요리 종류를 대강 나눕니다 (칩으로 걸러 볼 때만 씀) */
+  var KIND_RULES = [
+    ["탕수육", "볶음·구이"],
+    ["볶음밥", "밥·면"], ["비빔밥", "밥·면"], ["덮밥", "밥·면"], ["김밥", "밥·면"],
+    ["주먹밥", "밥·면"], ["국수", "밥·면"], ["라면", "밥·면"], ["칼국수", "밥·면"],
+    ["파스타", "밥·면"], ["우동", "밥·면"], ["냉면", "밥·면"], ["짜장", "밥·면"],
+    ["짬뽕", "밥·면"], ["비빔면", "밥·면"], ["떡볶이", "밥·면"], ["수제비", "밥·면"],
+    ["오므라이스", "밥·면"], ["카레", "밥·면"], ["밥", "밥·면"],
+    ["찌개", "국·찌개"], ["전골", "국·찌개"], ["육개장", "국·찌개"], ["해장", "국·찌개"],
+    ["곰탕", "국·찌개"], ["만둣국", "국·찌개"], ["무국", "국·찌개"], ["탕", "국·찌개"],
+    ["국", "국·찌개"], ["스프", "국·찌개"],
+    ["볶음", "볶음·구이"], ["구이", "볶음·구이"], ["튀김", "볶음·구이"], ["까스", "볶음·구이"],
+    ["카츠", "볶음·구이"], ["산도", "볶음·구이"], ["스테이크", "볶음·구이"], ["부침", "볶음·구이"],
+    ["빈대떡", "볶음·구이"], ["김치전", "볶음·구이"], ["파전", "볶음·구이"],
+    ["찜", "찜·조림"], ["조림", "찜·조림"], ["수육", "찜·조림"], ["갈비", "찜·조림"],
+    ["무침", "반찬"], ["나물", "반찬"], ["겉절이", "반찬"], ["김치", "반찬"], ["석박지", "반찬"],
+    ["장아찌", "반찬"], ["멸치", "반찬"], ["계란말이", "반찬"], ["달걀말이", "반찬"],
+    ["젓갈", "반찬"], ["샐러드", "반찬"], ["동치미", "반찬"], ["생채", "반찬"], ["장조림", "반찬"]
+  ];
 
-  function updateExternalLinks(q) {
-    var box = $("#recipeExternal");
-    if (!box) return;
-    var word = (q || "").trim();
-    box.hidden = !word;
-    if (!word) return;
-    var note = $("#extNote");
-    if (note) note.textContent = "‘" + word + "’ 영상을 유튜브에서 더 찾아보세요";
-    var yt = $("#extYoutube");
-    if (yt) yt.href = YOUTUBE + encodeURIComponent(word + " 레시피");
-    var mango = $("#extMango");
-    if (mango) mango.href = MANGO + encodeURIComponent(word);
+  function classifyKind(title) {
+    var t = String(title || "");
+    for (var i = 0; i < KIND_RULES.length; i++) {
+      if (t.indexOf(KIND_RULES[i][0]) >= 0) return KIND_RULES[i][1];
+    }
+    return "그 외";
   }
 
+  /* --- 채널 RSS 받아오기 ------------------------------------------------ */
+  function parseCookFeed(text, ch) {
+    var doc = new DOMParser().parseFromString(text, "text/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("xml");
+    var nodes = Array.prototype.slice.call(doc.getElementsByTagName("entry"));
+    if (!nodes.length) throw new Error("empty feed");
+    var out = [];
+    nodes.forEach(function (n) {
+      function txt(tag) {
+        var t = n.getElementsByTagName(tag)[0];
+        return t ? (t.textContent || "").trim() : "";
+      }
+      var id = txt("yt:videoId") || txt("id").replace("yt:video:", "");
+      var title = clean(txt("title"));
+      if (!id || !title) return;
+      var stamp = Date.parse(txt("published"));
+      var stats = n.getElementsByTagName("media:statistics")[0];
+      out.push({
+        id: id,
+        title: title,
+        ch: ch.id,
+        channel: ch.short || ch.name,
+        kind: classifyKind(title),
+        pub: isNaN(stamp) ? 0 : stamp,
+        views: stats ? Number(stats.getAttribute("views") || 0) : 0
+      });
+    });
+    return out;
+  }
+
+  function fetchCookFeed(ch) {
+    var feed = "https://www.youtube.com/feeds/videos.xml?channel_id=" + ch.id;
+    var enc = encodeURIComponent(feed);
+    var providers = [
+      "https://api.allorigins.win/raw?url=" + enc,
+      "https://api.codetabs.com/v1/proxy?quest=" + enc,
+      "https://api.cors.lol/?url=" + enc
+    ];
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var fails = 0;
+      providers.forEach(function (url) {
+        fetchWithTimeout(url, 9000).then(function (text) {
+          var items = parseCookFeed(text, ch);
+          if (settled) return;
+          settled = true;
+          resolve(items);
+        }).catch(function () {
+          fails += 1;
+          if (!settled && fails === providers.length) reject(new Error("feed failed"));
+        });
+      });
+    });
+  }
+
+  /* 오래된 채널부터 4곳씩 받아 옵니다 (통로가 막히지 않게) */
+  function loadCookFeeds(force) {
+    if (cook.loading || !CHANNELS.length) return;
+    var due = CHANNELS.filter(function (ch) {
+      /* 방금 시도한 채널은 5분 쉬어 갑니다 (막혔을 때 계속 두드리지 않게) */
+      if (cook.tried[ch.id] && Date.now() - cook.tried[ch.id] < 5 * 60 * 1000) return false;
+      if (force) return true;
+      var c = store(FEED_KEY + ch.id);
+      return !c || !c.items || !c.items.length || Date.now() - (c.ts || 0) > FEED_TTL;
+    });
+    if (!due.length) return;
+
+    cook.loading = true;
+    var batch = due.slice(0, 4);
+    var left = batch.length;
+    var got = 0;
+
+    batch.forEach(function (ch) {
+      cook.tried[ch.id] = Date.now();
+      fetchCookFeed(ch)
+        .then(function (items) {
+          store(FEED_KEY + ch.id, { ts: Date.now(), items: items });
+          got += 1;
+        })
+        .catch(function () { /* 이 채널은 다음 시간에 다시 시도 */ })
+        .then(function () {
+          left -= 1;
+          if (left > 0) return;
+          cook.loading = false;
+          if (got) {
+            cook.lastFetch = Date.now();
+            cook.hour = -1;             /* 새 영상으로 다시 고르기 */
+            renderVideos();
+          }
+          if (due.length > batch.length) loadCookFeeds(force); /* 남은 채널 이어서 */
+        });
+    });
+  }
+
+  /* --- 이번 시간에 보여줄 조합 ------------------------------------------ */
+  function cookPool() {
+    var groups = {};
+    var seen = {};
+
+    function add(chKey, v) {
+      if (!v || !v.id || seen[v.id]) return;
+      seen[v.id] = 1;
+      (groups[chKey] = groups[chKey] || []).push(v);
+    }
+
+    /* 1) 채널별 최신 영상 (RSS) — 새 영상부터 */
+    CHANNELS.forEach(function (ch) {
+      var c = store(FEED_KEY + ch.id);
+      if (!c || !c.items) return;
+      c.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
+        .forEach(function (it) {
+          add(ch.id, {
+            id: it.id, name: "", title: it.title,
+            channel: ch.short || ch.name, ch: ch.id,
+            kind: it.kind || classifyKind(it.title),
+            pub: it.pub || 0, views: it.views || 0, src: "feed"
+          });
+        });
+    });
+
+    /* 2) 검증해 둔 영상 (RSS가 막히거나 비어도 화면이 비지 않게) */
+    POOL.forEach(function (v) {
+      add(v.ch || "pool:" + v.channel, {
+        id: v.id, name: v.name || "", title: v.title,
+        channel: v.channel, ch: v.ch || "",
+        kind: v.kind || classifyKind(v.title),
+        pub: 0, views: 0, src: "pool"
+      });
+    });
+
+    return groups;
+  }
+
+  function buildCookMix() {
+    var groups = cookPool();
+    var keys = Object.keys(groups).sort();
+    var rng = cookRng(cookHour() + 7);
+
+    /* 채널 순서를 매 시간 섞습니다 */
+    for (var i = keys.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp;
+    }
+
+    /* 채널 안 순서: 이번 시간에 뽑은 새 영상 → 검증된 영상 → 나머지 새 영상 */
+    var picks = {};
+    keys.forEach(function (k) {
+      var arr = groups[k];
+      var fresh = arr.filter(function (v) { return v.src === "feed"; });
+      var pool = arr.filter(function (v) { return v.src !== "feed"; });
+      var order = [];
+      if (fresh.length) {
+        var pick = fresh[Math.min(Math.floor(rng() * 3), fresh.length - 1)];
+        order.push(pick);
+        fresh = fresh.filter(function (v) { return v !== pick; });
+      }
+      pool.forEach(function (v) { order.push(v); });
+      fresh.forEach(function (v) { order.push(v); });
+      picks[k] = order;
+    });
+
+    var out = [];
+    for (var pass = 0; pass < MAX_PER_CHANNEL && out.length < MIX_COUNT; pass++) {
+      keys.forEach(function (k) {
+        if (out.length >= MIX_COUNT) return;
+        var v = picks[k][pass];
+        if (v) out.push(v);
+      });
+    }
+    return out;
+  }
+
+  /* --- 화면 그리기 ------------------------------------------------------ */
   /* 큰 썸네일 → 없으면 hqdefault → mqdefault → ▶ 그림 */
   var THUMB_STEPS = ["maxresdefault", "hqdefault", "mqdefault"];
   function youtubeThumb(v, img, fig) {
@@ -862,13 +1053,15 @@
     });
   }
 
-  function videoCard(v) {
+  function cookCard(v) {
+    var big = v.name || v.title;
+    var label = v.name || v.title;
     var card = el("a", {
       class: "video-card",
       href: "https://www.youtube.com/watch?v=" + v.id,
       target: "_blank",
       rel: "noopener noreferrer",
-      "aria-label": v.name + " 요리 영상 보기 (새 창)"
+      "aria-label": label + " 요리 영상 보기 (새 창)"
     });
     var fig = el("figure", { class: "v-thumb" });
     var img = el("img", {
@@ -878,55 +1071,50 @@
     youtubeThumb(v, img, fig);
     fig.appendChild(img);
     fig.appendChild(el("span", { class: "v-play", text: "▶" }));
-
     card.appendChild(fig);
-    card.appendChild(el("div", { class: "v-body" }, [
-      el("div", { class: "v-top" }, [
-        el("span", { class: "v-name", text: v.name }),
-        el("span", { class: "v-kind", text: v.kind })
-      ]),
-      el("div", { class: "v-title", text: v.title }),
-      el("div", { class: "v-bottom" }, [
-        el("span", { class: "v-channel", text: "📺 " + v.channel }),
-        el("span", { class: "v-go", text: "유튜브로 보기 ▶" })
-      ])
+
+    var top = el("div", { class: "v-top" }, [
+      el("span", { class: "v-name", text: big }),
+      el("span", { class: "v-kind", text: v.kind })
+    ]);
+    var body = [top];
+    if (v.name && v.title) body.push(el("div", { class: "v-title", text: v.title }));
+    var when = v.pub ? timeAgo(v.pub) : "";
+    body.push(el("div", { class: "v-bottom" }, [
+      el("span", { class: "v-channel", text: "📺 " + v.channel + (when ? " · " + when : "") }),
+      el("span", { class: "v-go", text: "유튜브로 보기 ▶" })
     ]));
+    card.appendChild(el("div", { class: "v-body" }, body));
     return card;
   }
 
   function renderVideos() {
     var list = $("#recipeList");
     if (!list) return;
-    list.textContent = "";
-    var q = rState.query;
-    var kind = rState.kind;
-    var shown = videos.filter(function (v) {
-      if (kind && v.kind !== kind) return false;
-      return matchVideo(v, q);
-    });
+
+    if (cookHour() !== cook.hour) {
+      cook.hour = cookHour();
+      cook.items = buildCookMix();
+    }
+
+    var kind = cook.kind;
+    var shown = cook.items.filter(function (v) { return !kind || v.kind === kind; });
 
     setText("recipeCount", shown.length + "개 영상");
-    setText("recipeTitle", q ? "‘" + q + "’ 영상" : (kind || "오늘 뭐 해 먹지?"));
-    updateExternalLinks(q);
+    setText("recipeAuto", "🔄 1시간마다 자동 업데이트" + (cook.lastFetch ? " · " + hhmm(cook.lastFetch) + " 업데이트" : ""));
+    setText("recipeTitle", kind || "오늘 뭐 해 먹지?");
 
+    list.textContent = "";
     if (!shown.length) {
       list.appendChild(el("div", { class: "recipe-empty" }, [
-        el("span", { class: "big-emoji", text: "🔎" }),
-        el("p", { text: "‘" + q + "’ 영상은 여기 목록에 없어요" }),
-        el("p", { class: "sub", text: "아래 초록색 유튜브 버튼을 누르면 유튜브에서 바로 찾아 드려요." }),
-        el("a", {
-          class: "ext-btn youtube",
-          href: YOUTUBE + encodeURIComponent((q || "집밥") + " 레시피"),
-          target: "_blank", rel: "noopener",
-          style: "margin-top:0.75rem",
-          text: "▶️ 유튜브에서 ‘" + (q || "집밥") + "’ 영상 찾기"
-        }),
+        el("span", { class: "big-emoji", text: "🍲" }),
+        el("p", { text: "이번 시간에는 ‘" + kind + "’ 영상이 없어요" }),
+        el("p", { class: "sub", text: "다음 시간에 새로 골라 드려요. 지금은 전체 영상을 보세요." }),
         el("button", {
-          type: "button", class: "btn ghost wide", style: "margin-top:0.5rem", text: "전체 영상 보기",
+          type: "button", class: "btn wide", style: "margin-top:0.7rem", text: "전체 영상 보기",
           on: {
             click: function () {
-              rState.query = ""; rState.kind = "";
-              var input = $("#recipeInput"); if (input) input.value = "";
+              cook.kind = "";
               $$("#recipeChips button").forEach(function (b) { b.setAttribute("aria-pressed", String(!b.dataset.kind)); });
               renderVideos();
             }
@@ -935,27 +1123,40 @@
       ]));
       return;
     }
-    shown.forEach(function (v) { list.appendChild(videoCard(v)); });
+    shown.forEach(function (v) { list.appendChild(cookCard(v)); });
   }
 
-  var searchBtn = $("#recipeSearchBtn");
-  var input = $("#recipeInput");
-  function doSearch() {
-    rState.query = input ? input.value.trim() : "";
-    renderVideos();
-  }
-  if (searchBtn) searchBtn.addEventListener("click", doSearch);
-  if (input) {
-    input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doSearch(); } });
-    input.addEventListener("search", function () { rState.query = input.value.trim(); renderVideos(); });
-  }
   $$("#recipeChips button").forEach(function (b) {
     b.addEventListener("click", function () {
-      rState.kind = b.dataset.kind || "";
+      cook.kind = b.dataset.kind || "";
       $$("#recipeChips button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
       renderVideos();
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { /* 무시 */ }
     });
   });
+
+  var recipeRefreshBtn = $("#recipeRefresh");
+  if (recipeRefreshBtn) recipeRefreshBtn.addEventListener("click", function () {
+    recipeRefreshBtn.textContent = "불러오는 중…";
+    cook.hour = -1;
+    loadCookFeeds(true);
+    renderVideos();
+    setTimeout(function () { recipeRefreshBtn.textContent = "↻ 새로고침"; }, 2500);
+  });
+
+  /* 1분마다 확인: 정시가 지나면 새 조합, 채널 RSS가 오래됐으면 새로 받기 */
+  function cookTick() {
+    if (document.hidden) return;
+    if (cookHour() !== cook.hour) renderVideos();
+    if (state.tab === "recipe") loadCookFeeds(false);
+  }
+  setInterval(cookTick, 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) cookTick(); });
+  window.addEventListener("focus", cookTick);
+
+  setInterval(function () {           /* 자정을 넘겨도 목록이 바뀌도록 1시간마다 한 번 더 */
+    if (!document.hidden) renderVideos();
+  }, COOK_TTL);
 
   /* 시트 닫기 (레시피 상세 창) */
   function closeSheet() {
@@ -975,7 +1176,7 @@
    * ------------------------------------------------------------------ */
   loadWeather(false);
   loadNews("all", false);
-  if (videos.length) renderVideos();
+  renderVideos();          /* 검증해 둔 영상으로 먼저 채우고, 채널 RSS는 요리 탭을 열 때 받아옵니다 */
   prefetchFeeds();
 
   /* 서비스 워커 (홈 화면 앱처럼 열기 · 인터넷이 끊겨도 화면 유지) */

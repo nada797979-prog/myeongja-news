@@ -620,44 +620,21 @@ main { padding: 0.35rem 0.7rem 0; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 /* ---------- 추천요리 ---------- */
-.recipe-search {
-  background: #fff;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  padding: 0.8rem;
-  margin-bottom: 0.8rem;
-}
-.recipe-search label {
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 800;
-  margin-bottom: 0.35rem;
-  color: #24323f;
-}
-.search-row { display: flex; gap: 0.45rem; }
-.search-row input {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  min-height: 3.2rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  padding: 0 0.85rem;
-  border-radius: 14px;
-  border: 2px solid #cfc7b6;
-  background: #fffdf8;
-  color: var(--ink);
-}
-.search-row input:focus { outline: 3px solid #9cc3e8; border-color: var(--accent); }
-.search-row .btn { flex: 0 0 auto; min-width: 5.2rem; }
-
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.6rem;
   padding-bottom: 0.1rem;
+}
+#recipePanel .chips { margin: 0.15rem 0 0.85rem; }
+.recipe-foot {
+  margin: 0.9rem 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.45;
 }
 .chips button {
   flex: 0 0 auto;
@@ -676,35 +653,6 @@ main { padding: 0.35rem 0.7rem 0; }
   border-color: #b4560d;
   color: #7d3a06;
 }
-
-.external-links {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
-}
-.external-links .ext-note {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--muted);
-  margin: 0.1rem 0 0.15rem;
-}
-.ext-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 3.3rem;
-  padding: 0.5rem 0.7rem;
-  border-radius: 16px;
-  font-size: 0.98rem;
-  font-weight: 800;
-  line-height: 1.35;
-  text-align: center;
-  text-decoration: none;
-  border: 2px solid transparent;
-}
-.ext-btn.mango { background: #ff6b00; color: #fff; }
-.ext-btn.youtube { background: #fff; color: #b3261e; border-color: #d8443b; }
 
 .recipe-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; margin-top: 0.2rem; }
 
@@ -756,6 +704,10 @@ main { padding: 0.35rem 0.7rem 0; }
   letter-spacing: -0.02em;
   color: #111820;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .v-kind {
   font-size: 0.68rem;
