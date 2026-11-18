@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko" data-size="normal">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>명자뉴스 채널</title>
+  <meta name="description" content="김포 날씨와 오늘의 뉴스, 집밥 추천 요리를 큰 글씨로 보는 명자뉴스 채널" />
+  <meta name="theme-color" content="#12314c" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="명자뉴스" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <div class="sticky-top">
+      <header class="topbar">
+        <h1 class="brand"><span class="brand-emoji" aria-hidden="true">📰</span> 명자뉴스 채널</h1>
+        <div class="fontsizer" role="group" aria-label="글자 크기 조절">
+          <span class="label">글자</span>
+          <button type="button" data-size-btn="normal" aria-pressed="true">보통</button>
+          <button type="button" data-size-btn="large" aria-pressed="false">크게</button>
+          <button type="button" data-size-btn="xlarge" aria-pressed="false">아주 크게</button>
+        </div>
+      </header>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="뉴스 종류">
+        <button type="button" role="tab" data-tab="all" aria-selected="true">📰 전체</button>
+        <button type="button" role="tab" data-tab="economy" aria-selected="false">💰 경제</button>
+        <button type="button" role="tab" data-tab="politics" aria-selected="false">🏛️ 정치</button>
+        <button type="button" role="tab" data-tab="celeb" aria-selected="false">🎬 연예</button>
+        <button type="button" role="tab" data-tab="recipe" aria-selected="false">🍲 추천요리</button>
+      </nav>
+    </div>
+
+    <main>
+      <!-- 김포 날씨 -->
+      <section class="weather" id="weatherCard" aria-labelledby="weatherTitle">
+        <div class="w-head">
+          <div class="w-place" id="weatherTitle"><span class="nowrap">📍 김포시 오늘 날씨</span> <span class="nowrap today" id="todayLabel"></span></div>
+          <button type="button" class="w-refresh" id="weatherRefresh">↻ 새로고침</button>
+        </div>
+        <div class="w-main">
+          <div class="w-temp" id="wTemp">--<span class="unit">℃</span></div>
+          <div class="w-cond">
+            <span class="w-emoji" id="wEmoji" aria-hidden="true">🌤️</span>
+            <span id="wCond">불러오는 중</span>
+          </div>
+        </div>
+        <div class="w-line" id="wRange">오늘 최고 --℃ · 최저 --℃</div>
+        <div class="w-advice" id="wAdvice">날씨를 불러오고 있어요…</div>
+
+        <div class="air-row">
+          <div class="air" id="airPm10" data-level="보통">
+            <span class="air-label">미세먼지</span>
+            <span class="air-value" id="pm10Value">--<small>㎍/㎥</small></span>
+            <span class="air-state" id="pm10State">–</span>
+            <span class="air-bar"><span id="pm10Bar" style="width:0%"></span></span>
+          </div>
+          <div class="air" id="airPm25" data-level="보통">
+            <span class="air-label">초미세먼지</span>
+            <span class="air-value" id="pm25Value">--<small>㎍/㎥</small></span>
+            <span class="air-state" id="pm25State">–</span>
+            <span class="air-bar"><span id="pm25Bar" style="width:0%"></span></span>
+          </div>
+        </div>
+
+        <div class="w-foot">
+          <span id="wHumid">습도 --%</span>
+          <span id="wRain">강수확률 --%</span>
+          <span id="wUpdated">업데이트 --:--</span>
+        </div>
+      </section>
+
+      <!-- 유튜브 바로가기 -->
+      <a class="yt-banner" id="ytBanner" href="https://m.youtube.com" target="_blank" rel="noopener noreferrer"
+         aria-label="유튜브 바로가기, 좋아하시는 영상 보러 가기 (새 창)">
+        <span class="yt-icon" aria-hidden="true">▶</span>
+        <span class="yt-text">
+          <strong>유튜브 바로가기</strong>
+          <span class="yt-sub">좋아하시는 영상 보러 가기</span>
+        </span>
+        <span class="yt-go" aria-hidden="true">›</span>
+      </a>
+
+      <!-- 뉴스 -->
+      <section id="newsPanel" aria-label="뉴스 목록">
+        <div class="news-head">
+          <h2 id="newsTitle">오늘의 뉴스</h2>
+          <div class="head-right">
+            <span class="news-count" id="newsCount"></span>
+            <button type="button" class="mini-refresh" id="newsRefresh">↻ 새로고침</button>
+          </div>
+        </div>
+        <div class="news-list" id="newsList"></div>
+        <div id="newsMore" style="margin-top:0.9rem"></div>
+      </section>
+
+      <!-- 추천요리 -->
+      <section id="recipePanel" hidden aria-label="추천요리">
+        <div class="recipe-search">
+          <label for="recipeInput">무슨 요리를 찾으세요?</label>
+          <div class="search-row">
+            <input id="recipeInput" type="search" inputmode="search" autocomplete="off"
+                   placeholder="예) 된장찌개" aria-label="요리 검색어" />
+            <button type="button" class="btn" id="recipeSearchBtn">검색</button>
+          </div>
+          <div class="chips" id="recipeChips" role="group" aria-label="요리 종류">
+            <button type="button" data-kind="" aria-pressed="true">전체</button>
+            <button type="button" data-kind="국·찌개" aria-pressed="false">국·찌개</button>
+            <button type="button" data-kind="반찬" aria-pressed="false">반찬</button>
+            <button type="button" data-kind="볶음·구이" aria-pressed="false">볶음·구이</button>
+            <button type="button" data-kind="밥·면" aria-pressed="false">밥·면</button>
+          </div>
+          <div class="external-links" id="recipeExternal" hidden>
+            <div class="ext-note">찾는 요리가 없으면 여기서 더 찾아보세요</div>
+            <a class="ext-btn mango" id="extMango" href="#" target="_blank" rel="noopener">🟠 만개의레시피에서 검색</a>
+            <a class="ext-btn youtube" id="extYoutube" href="#" target="_blank" rel="noopener">▶️ 유튜브 요리 영상 보기</a>
+          </div>
+        </div>
+
+        <div class="news-head" style="margin-top:0.2rem">
+          <h2 id="recipeTitle">오늘 뭐 해 먹지?</h2>
+          <span class="news-count" id="recipeCount"></span>
+        </div>
+        <div class="recipe-list" id="recipeList"></div>
+      </section>
+
+      <!-- 홈 화면에 추가 -->
+      <details class="install" id="installGuide">
+        <summary>
+          <span aria-hidden="true">📲</span> 휴대폰 홈 화면에 추가하는 방법
+          <span class="arrow" aria-hidden="true">▼</span>
+        </summary>
+        <div class="install-body">
+          <p style="margin:0.2rem 0 0.1rem"><strong>안드로이드(갤럭시·크롬)</strong></p>
+          <ol>
+            <li>오른쪽 위 <strong>⋮</strong> (점 세 개)를 누릅니다.</li>
+            <li><strong>‘홈 화면에 추가’</strong> 또는 <strong>‘앱 설치’</strong>를 누릅니다.</li>
+            <li><strong>‘추가’</strong>를 누르면 홈 화면에 아이콘이 생깁니다.</li>
+          </ol>
+          <p style="margin:0.6rem 0 0.1rem"><strong>아이폰(사파리)</strong></p>
+          <ol>
+            <li>아래쪽 <strong>공유</strong> 버튼(<span aria-hidden="true">⬆️</span>)을 누릅니다.</li>
+            <li>목록에서 <strong>‘홈 화면에 추가’</strong>를 고릅니다.</li>
+            <li>오른쪽 위 <strong>‘추가’</strong>를 누릅니다.</li>
+          </ol>
+          <p class="caution">홈 화면 아이콘으로 열면 주소창 없이 크게 볼 수 있어요.</p>
+        </div>
+      </details>
+
+      <p class="foot-note">
+        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스<br />
+        기사를 누르면 언론사 원문이 새 창에서 열립니다.
+      </p>
+    </main>
+  </div>
+
+  <!-- 레시피 상세 -->
+  <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-panel" id="sheetPanel">
+      <div class="sheet-bar">
+        <h2 id="sheetTitle">레시피</h2>
+        <button type="button" class="close" id="sheetClose">닫기 ✕</button>
+      </div>
+      <div class="sheet-inner" id="sheetInner"></div>
+    </div>
+  </div>
+
+  <script src="recipes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
