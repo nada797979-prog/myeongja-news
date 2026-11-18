@@ -857,11 +857,16 @@
 
   function classifyKind(title) {
     var t = String(title || "");
+    /* 요리 이름이 아닌 말(설탕, 밥도둑)이 종류를 잘못 정하지 않게 지우고 봅니다 */
+    t = t.replace(/설탕/g, " ").replace(/밥도둑/g, " ");
     for (var i = 0; i < KIND_RULES.length; i++) {
       if (t.indexOf(KIND_RULES[i][0]) >= 0) return KIND_RULES[i][1];
     }
     return "그 외";
   }
+
+  /* 요리 영상이 아닌 것(브이로그·공구·예고 등)은 목록에서 뺍니다 */
+  var SKIP_RE = /브이로그|먹방|공구|#shorts|광고|협찬|예고|티저|근황|일상/i;
 
   /* --- 채널 RSS 받아오기 ------------------------------------------------ */
   function parseCookFeed(text, ch) {
@@ -878,6 +883,7 @@
       var id = txt("yt:videoId") || txt("id").replace("yt:video:", "");
       var title = clean(txt("title"));
       if (!id || !title) return;
+      if (SKIP_RE.test(title)) return;
       var stamp = Date.parse(txt("published"));
       var stats = n.getElementsByTagName("media:statistics")[0];
       out.push({
@@ -1024,6 +1030,10 @@
       picks[k] = order;
     });
 
+    var all = [];
+    keys.forEach(function (k) { groups[k].forEach(function (v) { all.push(v); }); });
+    cook.all = all;
+
     var out = [];
     for (var pass = 0; pass < MAX_PER_CHANNEL && out.length < MIX_COUNT; pass++) {
       keys.forEach(function (k) {
@@ -1088,6 +1098,27 @@
     return card;
   }
 
+  /* 칩을 누르면 그 종류 영상을 넓은 목록에서 모아 보여줍니다 (매 시간 순서가 바뀝니다) */
+  function kindList(kind) {
+    var arr = (cook.all || []).slice();
+    var rng = cookRng(cookHour() + 13);
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    var per = {};
+    var out = [];
+    arr.forEach(function (v) {
+      if (v.kind !== kind || out.length >= MIX_COUNT) return;
+      var key = v.ch || v.channel;
+      var n = per[key] || 0;
+      if (n >= MAX_PER_CHANNEL) return;
+      per[key] = n + 1;
+      out.push(v);
+    });
+    return out;
+  }
+
   function renderVideos() {
     var list = $("#recipeList");
     if (!list) return;
@@ -1098,7 +1129,7 @@
     }
 
     var kind = cook.kind;
-    var shown = cook.items.filter(function (v) { return !kind || v.kind === kind; });
+    var shown = kind ? kindList(kind) : cook.items;
 
     setText("recipeCount", shown.length + "개 영상");
     setText("recipeAuto", "🔄 1시간마다 자동 업데이트" + (cook.lastFetch ? " · " + hhmm(cook.lastFetch) + " 업데이트" : ""));
