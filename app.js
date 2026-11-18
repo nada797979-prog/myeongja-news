@@ -841,11 +841,14 @@
     if (mango) mango.href = MANGO + encodeURIComponent(word);
   }
 
+  /* 큰 썸네일 → 없으면 hqdefault → mqdefault → ▶ 그림 */
+  var THUMB_STEPS = ["maxresdefault", "hqdefault", "mqdefault"];
   function youtubeThumb(v, img, fig) {
     img.addEventListener("error", function () {
-      if (img.dataset.step !== "1") {
-        img.dataset.step = "1";
-        img.src = "https://i.ytimg.com/vi/" + v.id + "/mqdefault.jpg";
+      var step = Number(img.dataset.step || 0) + 1;
+      if (step < THUMB_STEPS.length) {
+        img.dataset.step = String(step);
+        img.src = "https://i.ytimg.com/vi/" + v.id + "/" + THUMB_STEPS[step] + ".jpg";
         return;
       }
       fig.textContent = "";
@@ -866,7 +869,7 @@
     var fig = el("figure", { class: "v-thumb" });
     var img = el("img", {
       alt: "", loading: "lazy", decoding: "async",
-      src: "https://i.ytimg.com/vi/" + v.id + "/hqdefault.jpg"
+      src: "https://i.ytimg.com/vi/" + v.id + "/maxresdefault.jpg"
     });
     youtubeThumb(v, img, fig);
     fig.appendChild(img);
