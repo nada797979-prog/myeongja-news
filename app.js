@@ -968,6 +968,8 @@
   function cookPool() {
     var groups = {};
     var seen = {};
+    var curated = {};
+    POOL.forEach(function (v) { curated[v.id] = v; });
 
     function add(chKey, v) {
       if (!v || !v.id || seen[v.id]) return;
@@ -983,10 +985,11 @@
       c.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
         .forEach(function (it) {
           if (SKIP_RE.test(it.title)) return;   /* 요리 영상이 아니면 화면에 넣지 않음 */
+          var cur = curated[it.id];
           add(ch.id, {
-            id: it.id, name: "", title: it.title,
+            id: it.id, name: cur ? (cur.name || "") : "", title: it.title,
             channel: ch.short || ch.name, ch: ch.id,
-            kind: classifyKind(it.title),
+            kind: (cur && cur.kind) || classifyKind(it.title),
             pub: it.pub || 0, views: it.views || 0, src: "feed"
           });
         });
