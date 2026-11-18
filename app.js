@@ -350,7 +350,7 @@
     "이라크", "레바논", "예멘", "카타르", "쿠웨이트", "쿠바", "베네수엘라", "하마스", "헤즈볼라", "나토",
     "EU", "유엔", "도쿄", "베이징", "상하이", "모스크바", "파리", "베를린", "런던", "키이우", "가자지구",
     "푸틴", "시진핑", "젤렌스키", "네타냐후", "마크롱", "다카이치", "크렘린", "트뤼도", "이시바", "모디",
-    "에르도안", "오르반", "하토야마", "네덜란드", "아세안", "동남아"
+    "에르도안", "오르반", "하토야마", "네덜란드", "아세안", "동남아", "IAEA", "영변", "평양"
   ];
 
   function titleOf(it) { return (it && it.title) || ""; }
@@ -381,7 +381,7 @@
   }
 
   /* 한자로 쓴 나라 이름(中·日)은 낱말로 쓰였을 때만 봅니다 */
-  function hasHanjaCountry(t) { return /[中日](?=[\s"'\[\]()·…,]|$)/.test(t); }
+  function hasHanjaCountry(t) { return /[中北日]/.test(t); }
 
   function isForeignOnly(item) {
     var t = titleOf(item);
@@ -460,7 +460,7 @@
 
   var PROVIDERS = [
     function (feed) {
-      return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feed) + "&count=30", 8000)
+      return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feed) + "&count=50", 8000)
         .then(parseRss2Json);
     },
     function (feed) {
@@ -509,7 +509,7 @@
       out.push(it);
     });
     out.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
-    return out.slice(0, 40);
+    return out.slice(0, 60);
   }
 
   function timeAgo(ts) {
