@@ -424,6 +424,86 @@ main { padding: 0.35rem 0.7rem 0; }
   opacity: 0.9;
 }
 
+/* ---------- 코뿔소 TV (유튜브 배너 아래) ---------- */
+.rhino {
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border-radius: var(--radius);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.rhino-head { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.rhino-head h2 {
+  margin: 0;
+  font-size: 1.14rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.rhino-channel {
+  margin-left: auto;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #fff;
+  background: #d60000;
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rhino-sub {
+  margin: 0.15rem 0 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.rhino-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.55rem; }
+.rhino-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: inherit;
+  background: #f8f5ef;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.rhino-card:active { transform: scale(0.995); }
+.r-thumb {
+  position: relative;
+  flex: 0 0 40%;
+  margin: 0;
+  min-height: 5.2rem;
+  background: #1d1d1d;
+  overflow: hidden;
+}
+.r-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.r-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.5rem 0.55rem 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.r-title {
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.36;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.r-meta { margin-top: auto; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.r-channel { font-size: 0.7rem; font-weight: 800; color: var(--muted); }
+.r-go { margin-left: auto; font-size: 0.72rem; font-weight: 800; color: #d60000; white-space: nowrap; }
+.rhino-empty { font-size: 0.85rem; font-weight: 700; color: var(--muted); padding: 0.5rem 0 0.3rem; }
+
 /* ---------- 뉴스 ---------- */
 .news-head {
   display: flex;
@@ -554,6 +634,7 @@ main { padding: 0.35rem 0.7rem 0; }
   flex-wrap: wrap;
 }
 .news-meta .dot { color: #b9b2a5; }
+.news-meta .src { color: #12314c; font-weight: 800; }
 .open-hint {
   margin-left: auto;
   font-size: 0.74rem;

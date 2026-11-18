@@ -1,6 +1,6 @@
 {
-  "name": "명자뉴스 채널",
-  "short_name": "명자뉴스",
+  "name": "명자채널",
+  "short_name": "명자채널",
   "description": "김포 날씨와 미세먼지, 오늘의 뉴스, 집밥 추천 요리를 큰 글씨로 보는 앱",
   "lang": "ko",
   "start_url": "./index.html",

@@ -18,6 +18,37 @@
       예전에 oEmbed로 확인한 영상들. 인터넷이 막히거나 RSS가 안 올 때도
       이 목록으로 화면을 채웁니다.  (2026-11-19 RSS 원문 확인)
 */
+/* 코뿔소 TV — 메인 화면 '유튜브 바로가기' 배너 아래에 새 영상이 올라올 때마다 보여줍니다.
+   채널: 코뿔소TV 서울김포영광교회 (RhinoTV) @RhinoTV0691
+   channel_id: UC2Brddysh5qpf3zD2wrTbRg
+   2026-11-19 확인: 채널 페이지(구독자 18.4만·본채널·경기도 김포)와
+   공개 RSS(https://www.youtube.com/feeds/videos.xml?channel_id=...) 응답 일치.
+   아래 videos 는 RSS가 막혔을 때 화면이 비지 않도록 넣어 둔 실제 최신 영상입니다. */
+window.RHINO = {
+  id: "UC2Brddysh5qpf3zD2wrTbRg",
+  name: "코뿔소TV 서울김포영광교회 (RhinoTV)",
+  handle: "@RhinoTV0691",
+  url: "https://www.youtube.com/channel/UC2Brddysh5qpf3zD2wrTbRg",
+  checkedAt: "2026-11-19",
+  videos: [
+    {
+      id: "BOv5-G8syj4",
+      title: "왕의 기도로 돌파하라 (베드로전서 2장 9-10절) / 특전사 기도회",
+      pub: 1795017531000
+    },
+    {
+      id: "_1CSFRteLBg",
+      title: "내 이름으로 무엇이든지 내게 구하면 내가 행하리라 (요한복음 14:14)",
+      pub: 1795010423000
+    },
+    {
+      id: "AWPWkEwTfzg",
+      title: "주님의 손길로 축복받는 유아축복식",
+      pub: 1795006803000
+    }
+  ]
+};
+
 window.COOK_CHANNELS = [
   { id: "UCyn-K7rZLXjGl7VXGweIlcA", name: "백종원 PAIK JONG WON", short: "백종원" },
   { id: "UC1g9JaEVLOFGhH8hpaK--Jg", name: "김대석 셰프TV", short: "김대석 셰프TV" },

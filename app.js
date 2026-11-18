@@ -1,5 +1,6 @@
-/* 명자뉴스 채널 — app.js
-   김포 날씨(오늘 + 7일 예보) + 연합뉴스 실시간 뉴스(사회·경제·정치·미국·연예) + 유튜브 인기 요리 영상
+/* 명자채널 — app.js
+   김포 날씨(오늘 + 7일 예보) + 여러 언론사 실시간 뉴스(사회·경제·정치·미국·연예)
+   + 코뿔소 TV 최신 영상 + 유튜브 인기 요리 영상
    백엔드 없이 브라우저에서만 동작합니다. */
 (function () {
   "use strict";
@@ -300,22 +301,88 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * 3. 뉴스 (연합뉴스 RSS · 스포츠 제외 · 미국 주요 뉴스 · 1시간 자동 업데이트)
+   * 3. 뉴스 (여러 언론사 RSS · 사진 있는 기사만 · 스포츠 제외 · 1시간 자동 업데이트)
+   *    · SBS·매일경제·동아일보·한겨레·머니투데이·연합뉴스의 공개 RSS를 함께 씁니다.
+   *    · 사진(썸네일)이 없는 기사는 목록에 넣지 않고, 사진이 깨진 카드도 지웁니다.
    * ------------------------------------------------------------------ */
-  var YNA = "https://www.yna.co.kr/rss/";
+  var YNA_RSS = "https://www.yna.co.kr/rss/";
+  var MK_RSS = "https://www.mk.co.kr/rss/";
+  var SBS_RSS = "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=";
+
   var TABS = {
-    all: { label: "전체", emoji: "📰", feed: YNA + "news.xml", title: "오늘의 뉴스" },
-    society: { label: "사회", emoji: "🏙️", feed: YNA + "society.xml", title: "사회 뉴스" },
-    economy: { label: "경제", emoji: "💰", feed: YNA + "economy.xml", title: "경제 뉴스" },
-    politics: { label: "정치", emoji: "🏛️", feed: YNA + "politics.xml", title: "정치 뉴스" },
-    usa: { label: "미국", emoji: "🇺🇸", feed: YNA + "international.xml", title: "미국 주요 뉴스" },
-    celeb: { label: "연예", emoji: "🎬", feed: YNA + "entertainment.xml", title: "연예 뉴스" }
+    all: { label: "전체", emoji: "📰", title: "오늘의 뉴스" },
+    society: { label: "사회", emoji: "🏙️", title: "사회 뉴스" },
+    economy: { label: "경제", emoji: "💰", title: "경제 뉴스" },
+    politics: { label: "정치", emoji: "🏛️", title: "정치 뉴스" },
+    usa: { label: "미국", emoji: "🇺🇸", title: "미국 주요 뉴스" },
+    celeb: { label: "연예", emoji: "🎬", title: "연예 뉴스" }
   };
+
+  /* 언론사별 공개 RSS (2026-11-19에 하나씩 받아 확인).
+     - 사진이 함께 오는 곳: 연합뉴스·SBS·매일경제·동아일보·한겨레·머니투데이
+     - 한국경제·경향신문 RSS에는 기사 사진이 아예 없고, 조선일보 사진 주소는
+       다른 사이트에서 열면 막혀(403) 사진이 깨지므로 넣지 않았습니다. */
+  var SOURCES = {
+    yna: {
+      name: "연합뉴스",
+      feeds: {
+        all: YNA_RSS + "news.xml", society: YNA_RSS + "society.xml", economy: YNA_RSS + "economy.xml",
+        politics: YNA_RSS + "politics.xml", usa: YNA_RSS + "international.xml", celeb: YNA_RSS + "entertainment.xml"
+      }
+    },
+    sbs: {
+      name: "SBS",
+      feeds: {
+        society: SBS_RSS + "03&plink=RSSREADER", economy: SBS_RSS + "02&plink=RSSREADER",
+        politics: SBS_RSS + "01&plink=RSSREADER", usa: SBS_RSS + "07&plink=RSSREADER",
+        celeb: SBS_RSS + "14&plink=RSSREADER"
+      }
+    },
+    mk: {
+      name: "매일경제",
+      feeds: {
+        all: MK_RSS + "40300001/", society: MK_RSS + "50400012/", economy: MK_RSS + "30100041/",
+        politics: MK_RSS + "30200030/", usa: MK_RSS + "30300018/", celeb: MK_RSS + "30000023/"
+      }
+    },
+    donga: {
+      name: "동아일보",
+      feeds: {
+        all: "https://rss.donga.com/total.xml", society: "https://rss.donga.com/national.xml",
+        economy: "https://rss.donga.com/economy.xml", politics: "https://rss.donga.com/politics.xml",
+        usa: "https://rss.donga.com/international.xml", celeb: "https://rss.donga.com/entertainment.xml"
+      }
+    },
+    hani: {
+      name: "한겨레",
+      feeds: {
+        society: "https://www.hani.co.kr/rss/society", economy: "https://www.hani.co.kr/rss/economy",
+        politics: "https://www.hani.co.kr/rss/politics", usa: "https://www.hani.co.kr/rss/international"
+      }
+    },
+    mt: {
+      name: "머니투데이",
+      feeds: { all: "https://rss.mt.co.kr/mt_news.xml" }
+    }
+  };
+
+  /* 탭마다 3~4개 언론사를 섞습니다 (한 번에 너무 많이 받지 않게). */
+  var TAB_FEEDS = {
+    all: [["yna", "all"], ["mk", "all"], ["donga", "all"], ["mt", "all"]],
+    society: [["yna", "society"], ["sbs", "society"], ["donga", "society"], ["hani", "society"]],
+    economy: [["yna", "economy"], ["mk", "economy"], ["sbs", "economy"], ["hani", "economy"]],
+    politics: [["yna", "politics"], ["sbs", "politics"], ["donga", "politics"], ["hani", "politics"]],
+    usa: [["yna", "usa"], ["sbs", "usa"], ["donga", "usa"]],
+    celeb: [["yna", "celeb"], ["sbs", "celeb"], ["mk", "celeb"], ["donga", "celeb"]]
+  };
+
   var NEWS_TTL = 60 * 60 * 1000; /* 1시간마다 새 뉴스 */
   var PAGE = 12;
+  var MAX_ITEMS = 60;
+  var NEWS_KEY = "mj_feed_v5_";
   var state = { tab: "all", items: [], shown: PAGE, note: null, reqId: 0, lastFetch: 0 };
 
-  function cacheKey(tab) { return "mj_news_v4_" + tab; }
+  function feedCacheKey(src, feed) { return NEWS_KEY + src + "_" + feed; }
 
   /* --- 스포츠 기사 거르기 --------------------------------------------- */
   /* 연합뉴스 기사 주소 끝 4자리가 분야 코드입니다. 0007·1007 이 스포츠입니다. */
@@ -353,7 +420,7 @@
     "이라크", "레바논", "예멘", "카타르", "쿠웨이트", "쿠바", "베네수엘라", "하마스", "헤즈볼라", "나토",
     "EU", "유엔", "도쿄", "베이징", "상하이", "모스크바", "파리", "베를린", "런던", "키이우", "가자지구",
     "푸틴", "시진핑", "젤렌스키", "네타냐후", "마크롱", "다카이치", "크렘린", "트뤼도", "이시바", "모디",
-    "에르도안", "오르반", "하토야마", "네덜란드", "아세안", "동남아", "IAEA", "영변", "평양"
+    "에르도안", "오르반", "하토야마", "아세안", "동남아", "IAEA", "영변", "평양"
   ];
 
   function titleOf(it) { return (it && it.title) || ""; }
@@ -392,11 +459,13 @@
     return hasWord(t, FOREIGN_WORDS) || hasHanjaCountry(t);
   }
 
-  /* 탭에 맞게 기사 거르기: 스포츠는 어디에도 안 나옵니다. */
+  /* 탭에 맞게 기사 거르기: 사진 없는 기사·스포츠는 어디에도 안 나옵니다. */
   var NOTICE_RE = /^\s*\[(알림|안내|게시판|정정)/;
 
   function shapeFor(tab, items) {
     return items.filter(function (it) {
+      if (!it.title || !it.link) return false;
+      if (!it.img) return false;                    /* 사진 없는 기사는 빼기 */
       if (NOTICE_RE.test(titleOf(it))) return false; /* 공지·사설 기사는 빼고 */
       if (isSports(it)) return false;
       if (tab === "usa") return isUS(it);
@@ -405,52 +474,18 @@
     });
   }
 
-  function parseRss2Json(text) {
-    var d = JSON.parse(text);
-    if (!d || d.status !== "ok" || !d.items) throw new Error(d && d.message ? d.message : "empty");
-    return d.items.map(function (it) {
-      var img = (it.enclosure && it.enclosure.link) || it.thumbnail || firstImage(it.content) || "";
-      var stamp = it.pubDate ? new Date(String(it.pubDate).replace(" ", "T") + "Z") : null;
-      return {
-        title: clean(it.title),
-        link: it.link,
-        img: img,
-        desc: clean(it.description || ""),
-        source: "연합뉴스",
-        date: stamp && !isNaN(stamp.getTime()) ? stamp.getTime() : null
-      };
-    });
-  }
-
-  function parseXmlFeed(text) {
-    var doc = new DOMParser().parseFromString(text, "text/xml");
-    if (doc.getElementsByTagName("parsererror").length) throw new Error("xml parse error");
-    var nodes = Array.prototype.slice.call(doc.getElementsByTagName("item"));
-    return nodes.map(function (n) {
-      function txt(tag) {
-        var t = n.getElementsByTagName(tag)[0];
-        return t ? (t.textContent || "").trim() : "";
-      }
-      var media = n.getElementsByTagName("media:content")[0] || n.getElementsByTagName("media:thumbnail")[0];
-      var encl = n.getElementsByTagName("enclosure")[0];
-      var img = (media && (media.getAttribute("url") || "")) || (encl && (encl.getAttribute("url") || "")) || "";
-      if (!img) img = firstImage(txt("description"));
-      var stamp = txt("pubDate") ? new Date(txt("pubDate")) : null;
-      return {
-        title: clean(txt("title")),
-        link: txt("link"),
-        img: img,
-        desc: clean(txt("description")),
-        source: "연합뉴스",
-        date: stamp && !isNaN(stamp.getTime()) ? stamp.getTime() : null
-      };
-    });
+  /* --- RSS 읽기 -------------------------------------------------------- */
+  function parseTime(s) {
+    if (!s) return null;
+    var t = Date.parse(String(s).trim());
+    return isNaN(t) ? null : t;
   }
 
   function firstImage(html) {
-    if (!html || html.indexOf("<img") < 0) return "";
-    var m = /<img[^>]+src=["']([^"']+)["']/i.exec(html);
-    return m ? m[1] : "";
+    if (!html) return "";
+    var m = /<img[^>]+src\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i.exec(html);
+    if (!m) return "";
+    return m[1] || m[2] || m[3] || "";
   }
 
   function clean(s) {
@@ -461,58 +496,171 @@
     return t.length > 160 ? t.slice(0, 158) + "…" : t;
   }
 
-  var PROVIDERS = [
-    function (feed) {
-      return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feed) + "&count=50", 8000)
-        .then(parseRss2Json);
-    },
-    function (feed) {
-      return fetchWithTimeout("https://api.allorigins.win/raw?url=" + encodeURIComponent(feed), 7000)
-        .then(parseXmlFeed);
-    },
-    function (feed) {
-      return fetchWithTimeout("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(feed), 7000)
-        .then(parseXmlFeed);
-    },
-    function (feed) {
-      return fetchWithTimeout("https://api.cors.lol/?url=" + encodeURIComponent(feed), 7000)
-        .then(parseXmlFeed);
-    }
-  ];
+  function fixImg(url) {
+    var u = String(url || "").trim();
+    if (!u) return "";
+    if (u.indexOf("//") === 0) u = "https:" + u;
+    if (!/^https?:/i.test(u)) return "";
+    return u;
+  }
+
+  function makeItem(title, link, img, desc, source, date, pos, now) {
+    return {
+      title: clean(title),
+      link: String(link || "").trim(),
+      img: fixImg(img),
+      desc: clean(desc).slice(0, 120),
+      source: source,
+      date: date || null,
+      rank: date || (now - pos * 10 * 60 * 1000)
+    };
+  }
+
+  function parseXmlFeed(text, source) {
+    var doc = new DOMParser().parseFromString(text, "text/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("xml parse error");
+    var nodes = Array.prototype.slice.call(doc.getElementsByTagName("item"));
+    if (!nodes.length) throw new Error("empty feed");
+    var now = Date.now();
+    return nodes.map(function (n, idx) {
+      function txt(tag) {
+        var t = n.getElementsByTagName(tag)[0];
+        return t ? (t.textContent || "").trim() : "";
+      }
+      var media = n.getElementsByTagName("media:content")[0] || n.getElementsByTagName("media:thumbnail")[0];
+      var encl = n.getElementsByTagName("enclosure")[0];
+      var img = (media && (media.getAttribute("url") || "")) || (encl && (encl.getAttribute("url") || "")) || "";
+      var desc = txt("description");
+      if (!img) img = firstImage(desc);
+      var date = parseTime(txt("pubDate")) || parseTime(txt("dc:date")) || parseTime(txt("date"));
+      return makeItem(txt("title"), txt("link"), img, desc, source, date, idx, now);
+    });
+  }
+
+  function parseRss2Json(text, source) {
+    var d = JSON.parse(text);
+    if (!d || d.status !== "ok" || !d.items) throw new Error(d && d.message ? d.message : "empty");
+    var now = Date.now();
+    return d.items.map(function (it, idx) {
+      var img = (it.thumbnail || "") || (it.enclosure && it.enclosure.link) || "";
+      var desc = it.description || it.content || "";
+      if (!img) img = firstImage(desc);
+      /* rss2json 은 시각을 세계표준시(UTC) 형식으로 줍니다 */
+      var stamp = it.pubDate ? new Date(String(it.pubDate).replace(" ", "T") + "Z") : null;
+      var date = stamp && !isNaN(stamp.getTime()) ? stamp.getTime() : null;
+      return makeItem(it.title, it.link, img, desc, source, date, idx, now);
+    });
+  }
 
   /* 여러 통로에 동시에 물어보고 가장 먼저 온 것을 씁니다. */
-  function fetchFeed(feed) {
+  function fetchFeed(url, source) {
     return new Promise(function (resolve, reject) {
       var settled = false;
       var fails = 0;
-      PROVIDERS.forEach(function (provider) {
-        provider(feed).then(function (items) {
-          if (!items || !items.length) throw new Error("empty feed");
+      var providers = [
+        function () {
+          return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(url) + "&count=50", 9000)
+            .then(function (text) { return parseRss2Json(text, source); });
+        },
+        function () {
+          return fetchWithTimeout("https://api.allorigins.win/raw?url=" + encodeURIComponent(url), 9000)
+            .then(function (text) { return parseXmlFeed(text, source); });
+        },
+        function () {
+          return fetchWithTimeout("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url), 9000)
+            .then(function (text) { return parseXmlFeed(text, source); });
+        },
+        function () {
+          return fetchWithTimeout("https://api.cors.lol/?url=" + encodeURIComponent(url), 9000)
+            .then(function (text) { return parseXmlFeed(text, source); });
+        }
+      ];
+      providers.forEach(function (run) {
+        run().then(function (items) {
           if (settled) return;
+          if (!items || !items.length) throw new Error("empty feed");
           settled = true;
           resolve(items);
         }).catch(function () {
           fails += 1;
-          if (!settled && fails === PROVIDERS.length) reject(new Error("all providers failed"));
+          if (!settled && fails === providers.length) reject(new Error("all providers failed"));
         });
       });
     });
   }
 
-  function normalize(items) {
-    var seen = {};
+  /* 한 번에 너무 많이 받지 않게 두 개씩만 받아 옵니다. */
+  function runQueue(items, limit, worker) {
+    var i = 0;
+    function next() {
+      if (i >= items.length) return Promise.resolve();
+      var item = items[i++];
+      return Promise.resolve(worker(item)).catch(function () { }).then(next);
+    }
+    var chains = [];
+    for (var n = 0; n < Math.min(limit, items.length); n++) chains.push(next());
+    return Promise.all(chains);
+  }
+
+  /* --- 모아 둔 기사 읽기 ------------------------------------------------ */
+  function readCaches(tab) {
+    var feeds = TAB_FEEDS[tab] || [];
     var out = [];
-    items.forEach(function (it) {
-      if (!it.title || !it.link) return;
-      var key = it.link.split("?")[0] + it.title.slice(0, 20);
-      if (seen[key]) return;
-      seen[key] = 1;
-      if (it.img && it.img.indexOf("//") === 0) it.img = "https:" + it.img;
-      if (it.img && !/^https?:/.test(it.img)) it.img = "";
-      out.push(it);
+    feeds.forEach(function (f) {
+      var c = store(feedCacheKey(f[0], f[1]));
+      if (c && c.items && c.items.length) out.push({ key: f[0] + "_" + f[1], ts: c.ts || 0, items: c.items });
     });
-    out.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
-    return out.slice(0, 60);
+    if (tab === "usa") {
+      /* 미국 기사가 적을 때: 전체 탭에서 받아 둔 기사에서도 골라 옵니다 */
+      [["yna", "all"], ["mk", "all"], ["donga", "all"], ["mt", "all"]].forEach(function (f) {
+        var key = f[0] + "_" + f[1];
+        if (out.some(function (o) { return o.key === key; })) return;
+        var c = store(feedCacheKey(f[0], f[1]));
+        if (c && c.items && c.items.length) out.push({ key: key, ts: c.ts || 0, items: c.items });
+      });
+    }
+    return out;
+  }
+
+  /* 언론사를 골고루 섞습니다 (한 곳 기사만 줄줄이 나오지 않게). */
+  function mixSources(items, limit) {
+    var groups = {};
+    var keys = [];
+    items.forEach(function (it) {
+      var k = it.source || "?";
+      if (!groups[k]) { groups[k] = []; keys.push(k); }
+      groups[k].push(it);
+    });
+    keys.forEach(function (k) {
+      groups[k].sort(function (a, b) { return (b.rank || b.date || 0) - (a.rank || a.date || 0); });
+    });
+    var out = [];
+    while (out.length < limit) {
+      var pass = [];
+      for (var n = 0; n < keys.length && out.length + pass.length < limit; n++) {
+        var arr = groups[keys[n]];
+        if (arr.length) pass.push(arr.shift());
+      }
+      if (!pass.length) break;
+      pass.sort(function (a, b) { return (b.rank || b.date || 0) - (a.rank || a.date || 0); });
+      pass.forEach(function (it) { out.push(it); });
+    }
+    return out;
+  }
+
+  function mergeForTab(tab, list) {
+    var all = [];
+    var seen = {};
+    list.forEach(function (entry) {
+      entry.items.forEach(function (it) {
+        if (!it || !it.title || !it.link) return;
+        var key = String(it.link).split("?")[0] + "|" + String(it.title).slice(0, 24);
+        if (seen[key]) return;
+        seen[key] = 1;
+        all.push(it);
+      });
+    });
+    return mixSources(shapeFor(tab, all), MAX_ITEMS);
   }
 
   function timeAgo(ts) {
@@ -530,20 +678,14 @@
     return (dt.getMonth() + 1) + "월 " + dt.getDate() + "일";
   }
 
-  /* 작은 썸네일 (제목 옆) */
-  function thumbNode(item, tab) {
+  /* 작은 썸네일 (제목 옆) — 사진이 깨지면 카드째로 지웁니다 */
+  function thumbNode(item, card) {
     var fig = el("figure", { class: "thumb" });
-    var info = TABS[tab] || TABS.all;
-    function fallback() {
-      fig.textContent = "";
-      fig.appendChild(el("div", { class: "thumb-fallback" }, [
-        el("span", { class: "tf-emoji", text: info.emoji }),
-        el("span", { class: "tf-text", text: info.label })
-      ]));
-    }
-    if (!item.img) { fallback(); return fig; }
     var img = el("img", { alt: "", loading: "lazy", decoding: "async" });
-    img.addEventListener("error", fallback);
+    img.addEventListener("error", function () {
+      var target = card || (img.closest && img.closest(".news-card"));
+      if (target && target.parentNode) target.parentNode.removeChild(target);
+    });
     img.addEventListener("load", function () { fig.classList.add("loaded"); });
     img.src = item.img;
     fig.appendChild(img);
@@ -554,10 +696,11 @@
     var info = TABS[tab] || TABS.all;
     var card = el("article", { class: "news-card" });
     var a = el("a", { href: item.link, target: "_blank", rel: "noopener noreferrer" });
+    var when = timeAgo(item.date);
     var meta = el("div", { class: "news-meta" }, [
-      el("span", { text: item.source || "연합뉴스" }),
-      el("span", { class: "dot", text: "·" }),
-      el("span", { text: timeAgo(item.date) }),
+      el("span", { class: "src", text: item.source || "" }),
+      when ? el("span", { class: "dot", text: "·" }) : null,
+      when ? el("span", { text: when }) : null,
       el("span", { class: "open-hint", text: "기사 보기 ▶" })
     ]);
     a.appendChild(el("div", { class: "news-body" }, [
@@ -565,7 +708,7 @@
       el("h3", { class: "news-title", text: item.title }),
       meta
     ]));
-    a.appendChild(thumbNode(item, tab));
+    a.appendChild(thumbNode(item, card));
     card.appendChild(a);
     return card;
   }
@@ -609,6 +752,14 @@
       list.insertBefore(el("div", { class: "offline-note", text: state.note }), list.firstChild);
     }
 
+    if (!items.length && !state.note) {
+      list.appendChild(el("div", { class: "status-box" }, [
+        el("span", { class: "big-emoji", text: "📰" }),
+        el("p", { text: "사진이 있는 새 기사를 찾는 중이에요" }),
+        el("p", { class: "sub", text: "잠시 뒤 ↻ 새로고침을 눌러 주세요." })
+      ]));
+    }
+
     if (more && items.length > state.shown) {
       more.appendChild(el("button", {
         type: "button", class: "btn ghost wide",
@@ -648,60 +799,49 @@
     if (!cfg) return;
     state.tab = tab;
     var reqId = ++state.reqId;
+    var feeds = TAB_FEEDS[tab] || [];
+    var now = Date.now();
 
-    var cached = store(cacheKey(tab));
-    var hasCache = !!(cached && cached.items && cached.items.length);
-    var fresh = hasCache && (Date.now() - (cached.ts || 0) < NEWS_TTL);
+    state.shown = PAGE;
 
-    if (hasCache) {
-      state.items = shapeFor(tab, cached.items);
-      state.shown = PAGE;
-      state.lastFetch = cached.ts || 0;
-      state.note = fresh ? null : "📡 새 뉴스를 받지 못해 지난번에 받아둔 기사를 보여드려요.";
-      renderNews();
-      if (fresh && !force) return;
-    } else {
-      state.items = [];
-      state.shown = PAGE;
+    function show() {
+      var cached = readCaches(tab);
+      state.items = cached.length ? mergeForTab(tab, cached) : [];
+      state.lastFetch = cached.length ? Math.max.apply(null, cached.map(function (c) { return c.ts; })) : 0;
       state.note = null;
-      renderSkeleton(tab);
+      renderNews();
+      return cached;
     }
 
-    fetchFeed(cfg.feed).then(function (items) {
-      if (reqId !== state.reqId) return; /* 다른 탭으로 옮겨감 */
-      state.items = shapeFor(tab, normalize(items));
-      state.shown = PAGE;
-      state.note = null;
-      state.lastFetch = Date.now();
-      if (tab === "usa") {
-        /* 국제면에 있는 미국 기사를, 전체 뉴스에 있는 미국 기사와 합칩니다 */
-        var allCache = store(cacheKey("all"));
-        if (allCache && allCache.items && allCache.items.length) {
-          var extra = shapeFor("usa", allCache.items);
-          var seen = {};
-          state.items.forEach(function (it) { seen[it.link] = 1; });
-          extra.forEach(function (it) { if (!seen[it.link]) { seen[it.link] = 1; state.items.push(it); } });
-          state.items.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
-        }
-      }
-      store(cacheKey(tab), { ts: Date.now(), items: state.items });
-      renderNews();
-    }).catch(function () {
+    var cachedNow = show();
+    if (!cachedNow.length) renderSkeleton(tab);
+
+    var due = feeds.filter(function (f) {
+      if (force) return true;
+      var c = store(feedCacheKey(f[0], f[1]));
+      return !c || !c.items || !c.items.length || (now - (c.ts || 0) > NEWS_TTL);
+    });
+    if (!due.length) return;
+
+    var got = 0;
+    runQueue(due, 2, function (f) {
+      var url = SOURCES[f[0]].feeds[f[1]];
+      var srcName = SOURCES[f[0]].name;
+      return fetchFeed(url, srcName).then(function (items) {
+        store(feedCacheKey(f[0], f[1]), { ts: Date.now(), items: items.slice(0, 40) });
+        got += 1;
+        if (reqId === state.reqId) show();   /* 먼저 온 언론사 기사부터 바로 보여주기 */
+      });
+    }).then(function () {
       if (reqId !== state.reqId) return;
-      var old = store(cacheKey(tab));
-      if (old && old.items && old.items.length) {
-        state.items = shapeFor(tab, old.items);
-        state.lastFetch = old.ts || 0;
-        state.note = "📡 새 뉴스를 받지 못해 지난번에 받아둔 기사를 보여드려요.";
-        renderNews();
+      if (got) {
+        show();
         return;
       }
-      /* 전용 소식통이 막혔을 때: 전체 뉴스에서 그 분야만 골라 보여드립니다 */
-      var picked = pickByKeywords(tab);
-      if (picked) {
-        state.items = picked;
-        state.shown = PAGE;
-        state.note = "🔎 " + cfg.label + " 전용 소식이 지금 막혀서, 전체 뉴스 중 " + cfg.label + " 소식을 골라 보여드려요.";
+      var old = readCaches(tab);
+      if (old.length) {
+        show();
+        state.note = "📡 새 뉴스를 받지 못해 지난번에 받아둔 기사를 보여드려요.";
         renderNews();
         return;
       }
@@ -710,55 +850,13 @@
   }
 
   var SECTION_LINKS = {
-    all: { url: "https://www.yna.co.kr/news", label: "연합뉴스에서 직접 보기" },
-    society: { url: "https://www.yna.co.kr/society/all", label: "연합뉴스 사회면에서 보기" },
-    economy: { url: "https://www.yna.co.kr/economy/all", label: "연합뉴스 경제면에서 보기" },
-    politics: { url: "https://www.yna.co.kr/politics/all", label: "연합뉴스 정치면에서 보기" },
-    usa: { url: "https://www.yna.co.kr/international/all", label: "연합뉴스 국제면에서 보기" },
-    celeb: { url: "https://www.yna.co.kr/entertainment/all", label: "연합뉴스 연예면에서 보기" }
+    all: { url: "https://news.naver.com/", label: "네이버 뉴스에서 보기" },
+    society: { url: "https://news.naver.com/section/102", label: "네이버 사회면에서 보기" },
+    economy: { url: "https://news.naver.com/section/101", label: "네이버 경제면에서 보기" },
+    politics: { url: "https://news.naver.com/section/100", label: "네이버 정치면에서 보기" },
+    usa: { url: "https://news.naver.com/section/104", label: "네이버 세계면에서 보기" },
+    celeb: { url: "https://news.naver.com/section/106", label: "네이버 연예면에서 보기" }
   };
-
-  var PICK_WORDS = {
-    society: ["사고", "경찰", "소방", "검찰", "법원", "재판", "구속", "화재", "폭우", "태풍", "날씨", "교통", "사망", "부상", "복지", "교육", "학교", "병원", "의료", "노조", "파업", "환경", "기후", "주민", "지자체", "시청", "도의회", "사건", "피해"],
-    economy: ["주가", "증시", "코스피", "코스닥", "환율", "금리", "물가", "수출", "수입", "기업", "반도체", "부동산", "은행", "투자", "경제", "매출", "영업이익", "원화", "유가", "무역", "세금", "예산", "고용", "소비", "가격"],
-    politics: ["대통령", "국회", "정부", "여당", "야당", "장관", "국무", "의원", "선거", "외교", "국방", "경찰", "검찰", "법원", "청문", "정당", "대변인", "정치", "특검", "개각"],
-    usa: US_WORDS,
-    celeb: ["배우", "가수", "아이돌", "드라마", "영화", "예능", "방송", "컴백", "콘서트", "앨범", "시청률", "연기", "오디션", "뮤지컬", "그룹", "K팝", "케이팝", "팬", "연예", "스타", "감독", "출연", "무대", "투어"]
-  };
-
-  function pickByKeywords(tab) {
-    var words = PICK_WORDS[tab];
-    var all = store(cacheKey("all"));
-    if (!words || !all || !all.items || !all.items.length) return null;
-    var picked = shapeFor(tab, all.items.filter(function (it) {
-      var t = it.title || "";
-      return words.some(function (w) { return t.indexOf(w) >= 0; });
-    }));
-    return picked.length >= 3 ? picked : null;
-  }
-
-  /* 탭을 눌렀을 때 바로 보이도록 다른 분야 기사를 미리 조용히 받아 둡니다. */
-  function prefetchFeeds() {
-    var queue = ["society", "celeb", "economy", "politics", "usa"];
-    var i = 0;
-    function next() {
-      if (i >= queue.length) return;
-      var tab = queue[i++];
-      var c = store(cacheKey(tab));
-      if (c && c.items && c.items.length && Date.now() - (c.ts || 0) < NEWS_TTL) {
-        setTimeout(next, 1500);
-        return;
-      }
-      fetchFeed(TABS[tab].feed).then(function (items) {
-        var cur = store(cacheKey(tab));
-        if (!cur || !cur.items || !cur.items.length) {
-          store(cacheKey(tab), { ts: Date.now(), items: shapeFor(tab, normalize(items)) });
-        }
-      }).catch(function () { /* 미리 받기는 실패해도 괜찮습니다 */ })
-        .then(function () { setTimeout(next, 12000); });
-    }
-    setTimeout(next, 7000);
-  }
 
   /* 1시간마다 자동으로 새 뉴스 받기 */
   function refreshIfStale() {
@@ -790,11 +888,13 @@
       var recipePanel = $("#recipePanel");
       var weatherCard = $("#weatherCard");
       var ytBanner = $("#ytBanner");
+      var rhinoPanel = $("#rhinoPanel");
       if (tab === "recipe") {
         if (newsPanel) newsPanel.hidden = true;
         if (recipePanel) recipePanel.hidden = false;
         if (weatherCard) weatherCard.hidden = true;
         if (ytBanner) ytBanner.hidden = true;
+        if (rhinoPanel) rhinoPanel.hidden = true;
         renderVideos();
         loadCookFeeds(false);
       } else {
@@ -802,13 +902,157 @@
         if (newsPanel) newsPanel.hidden = false;
         if (weatherCard) weatherCard.hidden = false;
         if (ytBanner) ytBanner.hidden = false;
+        if (rhinoPanel) rhinoPanel.hidden = false;
+        renderRhino();
         loadNews(tab, false);
       }
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
     });
   });
+
   /* ------------------------------------------------------------------ *
-   * 4. 추천요리 — 유명 요리 채널의 새 영상 + 검증된 영상 (1시간마다 새 조합)
+   * 4. 코뿔소 TV (유튜브 바로가기 배너 바로 아래 · 새 영상 1시간마다)
+   *    · 채널: 코뿔소TV 서울김포영광교회 (RhinoTV) @RhinoTV0691
+   *    · channel_id: UC2Brddysh5qpf3zD2wrTbRg
+   *      (2026-11-19 채널 페이지·공개 RSS로 확인: 구독자 18.4만, 본채널, 김포)
+   * ------------------------------------------------------------------ */
+  var RHINO = window.RHINO || null;
+  var RHINO_KEY = "mj_rhino_v1";
+  var RHINO_TTL = 60 * 60 * 1000;   /* 1시간마다 새 영상 확인 */
+
+  function parseYouTubeFeed(text) {
+    var doc = new DOMParser().parseFromString(text, "text/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("xml");
+    var nodes = Array.prototype.slice.call(doc.getElementsByTagName("entry"));
+    if (!nodes.length) throw new Error("empty feed");
+    return nodes.map(function (n) {
+      function txt(tag) {
+        var t = n.getElementsByTagName(tag)[0];
+        return t ? (t.textContent || "").trim() : "";
+      }
+      var id = txt("yt:videoId") || txt("id").replace("yt:video:", "");
+      var stamp = Date.parse(txt("published"));
+      return { id: id, title: clean(txt("title")), pub: isNaN(stamp) ? 0 : stamp };
+    }).filter(function (v) { return v.id && v.title; });
+  }
+
+  function parseYouTubeJson(text) {
+    var d = JSON.parse(text);
+    if (!d || d.status !== "ok" || !d.items) throw new Error("empty");
+    return d.items.map(function (it) {
+      var m = /(?:v=|youtu\.be\/|\/shorts\/)([\w-]{11})/.exec(it.link || "");
+      var stamp = it.pubDate ? new Date(String(it.pubDate).replace(" ", "T") + "Z") : null;
+      return {
+        id: m ? m[1] : "",
+        title: clean(it.title),
+        pub: stamp && !isNaN(stamp.getTime()) ? stamp.getTime() : 0
+      };
+    }).filter(function (v) { return v.id && v.title; });
+  }
+
+  function fetchYouTube(chId) {
+    var feed = "https://www.youtube.com/feeds/videos.xml?channel_id=" + chId;
+    var enc = encodeURIComponent(feed);
+    var providers = [
+      function () {
+        return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + enc + "&count=15", 9000)
+          .then(parseYouTubeJson);
+      },
+      function () { return fetchWithTimeout("https://api.allorigins.win/raw?url=" + enc, 9000).then(parseYouTubeFeed); },
+      function () { return fetchWithTimeout("https://api.codetabs.com/v1/proxy?quest=" + enc, 9000).then(parseYouTubeFeed); },
+      function () { return fetchWithTimeout("https://api.cors.lol/?url=" + enc, 9000).then(parseYouTubeFeed); }
+    ];
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var fails = 0;
+      providers.forEach(function (run) {
+        run().then(function (items) {
+          if (settled) return;
+          if (!items || !items.length) throw new Error("empty feed");
+          settled = true;
+          resolve(items);
+        }).catch(function () {
+          fails += 1;
+          if (!settled && fails === providers.length) reject(new Error("feed failed"));
+        });
+      });
+    });
+  }
+
+  function rhinoData() {
+    var c = store(RHINO_KEY);
+    if (c && c.items && c.items.length) return c;
+    if (RHINO && RHINO.videos && RHINO.videos.length) return { ts: 0, items: RHINO.videos };
+    return null;
+  }
+
+  function rhinoCard(v) {
+    var card = el("a", {
+      class: "rhino-card",
+      href: "https://www.youtube.com/watch?v=" + v.id,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      "aria-label": v.title + " (새 창에서 유튜브로 보기)"
+    });
+    var fig = el("figure", { class: "r-thumb" });
+    var img = el("img", {
+      alt: "", loading: "lazy", decoding: "async",
+      src: "https://i.ytimg.com/vi/" + v.id + "/hqdefault.jpg"
+    });
+    youtubeThumb(v, img, fig);
+    fig.appendChild(img);
+    fig.appendChild(el("span", { class: "v-play", text: "▶" }));
+    card.appendChild(fig);
+
+    var when = v.pub ? timeAgo(v.pub) : "";
+    card.appendChild(el("div", { class: "r-body" }, [
+      el("div", { class: "r-title", text: cookTitle(v.title) }),
+      el("div", { class: "r-meta" }, [
+        el("span", { class: "r-channel", text: "🦏 코뿔소 TV" + (when ? " · " + when : "") }),
+        el("span", { class: "r-go", text: "유튜브로 보기 ▶" })
+      ])
+    ]));
+    return card;
+  }
+
+  function renderRhino() {
+    var list = $("#rhinoList");
+    if (!list) return;
+    var data = rhinoData();
+    list.textContent = "";
+    if (!data) {
+      list.appendChild(el("div", { class: "rhino-empty", text: "새 영상을 불러오는 중이에요…" }));
+      return;
+    }
+    data.items.slice().sort(function (a, b) { return (b.pub || 0) - (a.pub || 0); })
+      .slice(0, 3).forEach(function (v) { list.appendChild(rhinoCard(v)); });
+    setText("rhinoAuto", "🔄 1시간마다 자동 업데이트" + (data.ts ? " · " + hhmm(data.ts) + " 업데이트" : ""));
+  }
+
+  function loadRhino(force) {
+    if (!RHINO || !RHINO.id) return;
+    var c = store(RHINO_KEY);
+    if (!force && c && c.items && c.items.length && Date.now() - (c.ts || 0) < RHINO_TTL) {
+      renderRhino();
+      return;
+    }
+    fetchYouTube(RHINO.id).then(function (items) {
+      if (!items || !items.length) return;
+      store(RHINO_KEY, { ts: Date.now(), items: items.slice(0, 10) });
+      renderRhino();
+    }).catch(function () { renderRhino(); /* 통로가 막히면 저장해 둔 영상 그대로 */ });
+  }
+
+  /* 잠깐 잠들었다 깨어나도 새 영상이 올라왔는지 확인 */
+  setInterval(function () {
+    if (document.hidden) return;
+    var c = store(RHINO_KEY);
+    if (!c || Date.now() - (c.ts || 0) >= RHINO_TTL) loadRhino(false);
+  }, 10 * 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) renderRhino(); });
+
+  /* ------------------------------------------------------------------ *
+   * 5. 추천요리 — 유명 요리 채널의 새 영상 + 검증된 영상 (1시간마다 새 조합)
    *    · 채널 10곳의 유튜브 공개 RSS를 CORS 통로로 받아 최신 영상을 모읍니다.
    *    · 채널마다 돌아가며 골라, 매시 정시가 지나면 다른 영상 조합이 됩니다.
    *    · 화면 목록은 60분(1시간)마다, 채널 RSS는 3시간마다 새로 받습니다.
@@ -1218,12 +1462,13 @@
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
 
   /* ------------------------------------------------------------------ *
-   * 5. 시작
+   * 6. 시작
    * ------------------------------------------------------------------ */
   loadWeather(false);
   loadNews("all", false);
+  renderRhino();           /* 저장해 둔 코뿔소 TV 영상으로 먼저 채우고, 새 영상은 이어서 받아옵니다 */
+  loadRhino(false);
   renderVideos();          /* 검증해 둔 영상으로 먼저 채우고, 채널 RSS는 요리 탭을 열 때 받아옵니다 */
-  prefetchFeeds();
 
   /* 서비스 워커 (홈 화면 앱처럼 열기 · 인터넷이 끊겨도 화면 유지) */
   if ("serviceWorker" in navigator) {

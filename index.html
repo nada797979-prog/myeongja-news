@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>명자뉴스 채널</title>
-  <meta name="description" content="김포 날씨와 오늘의 뉴스, 미국 주요 뉴스, 유튜브 인기 요리 영상을 큰 글씨로 보는 명자뉴스 채널" />
+  <title>명자채널</title>
+  <meta name="description" content="김포 날씨와 여러 언론사 오늘의 뉴스, 코뿔소 TV 최신 영상, 유튜브 인기 요리 영상을 큰 글씨로 보는 명자채널" />
   <meta name="theme-color" content="#12314c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="명자뉴스" />
+  <meta name="apple-mobile-web-app-title" content="명자채널" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div class="shell">
     <div class="sticky-top">
       <header class="topbar">
-        <h1 class="brand"><span class="brand-emoji" aria-hidden="true">📰</span> 명자뉴스 채널</h1>
+        <h1 class="brand"><span class="brand-emoji" aria-hidden="true">📰</span> 명자채널</h1>
         <div class="fontsizer" role="group" aria-label="글자 크기 조절">
           <span class="label">글자</span>
           <button type="button" data-size-btn="normal" aria-pressed="true">보통</button>
@@ -95,6 +95,19 @@
         <span class="yt-go" aria-hidden="true">›</span>
       </a>
 
+
+      <!-- 코뿔소 TV 최신 영상 (유튜브 배너 바로 아래) -->
+      <section class="rhino" id="rhinoPanel" aria-labelledby="rhinoTitle">
+        <div class="rhino-head">
+          <h2 id="rhinoTitle">🦏 코뿔소 TV 최신 영상</h2>
+          <a class="rhino-channel" id="rhinoChannel"
+             href="https://www.youtube.com/channel/UC2Brddysh5qpf3zD2wrTbRg"
+             target="_blank" rel="noopener noreferrer">채널 바로가기 ›</a>
+        </div>
+        <p class="rhino-sub" id="rhinoAuto">🔄 1시간마다 자동 업데이트</p>
+        <div class="rhino-list" id="rhinoList"></div>
+      </section>
+
       <!-- 뉴스 -->
       <section id="newsPanel" aria-label="뉴스 목록">
         <div class="news-head">
@@ -161,7 +174,7 @@
       </details>
 
       <p class="foot-note">
-        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스 · 요리 영상: 유튜브<br />
+        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스·SBS·매일경제·동아일보·한겨레·머니투데이<br />코뿔소 TV·요리 영상: 유튜브<br />
         기사를 누르면 언론사 원문이 새 창에서 열립니다.
       </p>
     </main>
@@ -178,7 +191,7 @@
     </div>
   </div>
 
-  <script src="videos.js?v=6"></script>
-  <script src="app.js?v=8"></script>
+  <script src="videos.js?v=7"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
