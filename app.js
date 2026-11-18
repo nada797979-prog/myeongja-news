@@ -819,7 +819,7 @@
   var FEED_TTL = 3 * 60 * 60 * 1000;  /* 한 채널의 RSS를 다시 받는 주기 = 3시간 */
   var MIX_COUNT = 15;                 /* 한 번에 보여줄 영상 수 */
   var MAX_PER_CHANNEL = 2;            /* 한 채널이 차지하는 최대 칸 수 */
-  var FEED_KEY = "mj_cook_feed_v1_";
+  var FEED_KEY = "mj_cook_feed_v2_";
 
   var cook = { kind: "", hour: -1, items: [], lastFetch: 0, loading: false, tried: {}, fresh: 0 };
 
@@ -983,7 +983,7 @@
           add(ch.id, {
             id: it.id, name: "", title: it.title,
             channel: ch.short || ch.name, ch: ch.id,
-            kind: it.kind || classifyKind(it.title),
+            kind: classifyKind(it.title),
             pub: it.pub || 0, views: it.views || 0, src: "feed"
           });
         });
