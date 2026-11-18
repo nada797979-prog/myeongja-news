@@ -1,7 +1,7 @@
 /* 명자뉴스 채널 서비스 워커
-   - 같은 주소의 화면 파일은 캐시에서 먼저 (빠르게)
+   - 화면 파일도 '인터넷 먼저'로 받아 새 버전이 바로 반영되게 (실패하면 저장해 둔 화면 사용)
    - 뉴스·날씨 같은 외부 데이터는 항상 새로 시도하고, 실패하면 캐시 사용 */
-const CACHE = "myeongja-news-v2";
+const CACHE = "myeongja-news-v3";
 const SHELL = [
   "./",
   "./index.html",
@@ -49,17 +49,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 화면 파일: 캐시 우선, 없으면 네트워크
+  // 화면 파일: 네트워크 우선(새 버전 바로 반영), 실패하면 캐시 → 없으면 index.html
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => null);
-        }
-        return res;
-      }).catch(() => caches.match("./index.html"));
-    })
+    fetch(req).then((res) => {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => null);
+      }
+      return res;
+    }).catch(() =>
+      caches.match(req).then((cached) => cached || caches.match("./index.html"))
+    )
   );
 });
