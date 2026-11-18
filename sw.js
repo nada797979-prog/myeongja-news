@@ -1,13 +1,13 @@
 /* 명자뉴스 채널 서비스 워커
    - 같은 주소의 화면 파일은 캐시에서 먼저 (빠르게)
    - 뉴스·날씨 같은 외부 데이터는 항상 새로 시도하고, 실패하면 캐시 사용 */
-const CACHE = "myeongja-news-v1";
+const CACHE = "myeongja-news-v2";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./recipes.js",
+  "./videos.js",
   "./manifest.json",
   "./icon.svg",
   "./icon-192.png",

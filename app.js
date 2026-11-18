@@ -1,5 +1,5 @@
 /* 명자뉴스 채널 — app.js
-   김포 날씨 + 연합뉴스 실시간 뉴스 + 집밥 추천요리
+   김포 날씨(오늘 + 7일 예보) + 연합뉴스 실시간 뉴스(사회·경제·정치·미국·연예) + 유튜브 인기 요리 영상
    백엔드 없이 브라우저에서만 동작합니다. */
 (function () {
   "use strict";
@@ -50,6 +50,11 @@
       });
   }
 
+  function hhmm(ts) {
+    var d = new Date(ts || Date.now());
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
   /* ------------------------------------------------------------------ *
    * 1. 글자 크기 (보통 / 크게 / 아주 크게)
    * ------------------------------------------------------------------ */
@@ -76,10 +81,10 @@
   })();
 
   /* ------------------------------------------------------------------ *
-   * 2. 김포 날씨 + 미세먼지
+   * 2. 김포 날씨 + 미세먼지 + 일주일 예보
    * ------------------------------------------------------------------ */
   var KIMPO = { lat: 37.6153, lon: 126.7156 };
-  var WEATHER_CACHE = "mj_weather_v3";
+  var WEATHER_CACHE = "mj_weather_v4";
   var WMO = {
     0: ["맑음", "☀️"], 1: ["대체로 맑음", "🌤️"], 2: ["구름 조금", "⛅"], 3: ["흐림", "☁️"],
     45: ["안개", "🌫️"], 48: ["짙은 안개", "🌫️"],
@@ -92,6 +97,15 @@
     85: ["소낙눈", "🌨️"], 86: ["많은 소낙눈", "❄️"],
     95: ["천둥번개", "⛈️"], 96: ["우박 동반 뇌우", "⛈️"], 99: ["우박 동반 뇌우", "⛈️"]
   };
+
+  /* 일주일 예보 칸에 넣을 짧은 날씨 이름 */
+  var SHORT_COND = {
+    "대체로 맑음": "맑음", "구름 조금": "구름", "짙은 안개": "안개", "약한 이슬비": "이슬비",
+    "강한 이슬비": "이슬비", "어는 이슬비": "이슬비", "약한 비": "비", "강한 비": "비",
+    "어는 비": "비", "약한 눈": "눈", "많은 눈": "눈", "눈알갱이": "눈", "강한 소나기": "소나기",
+    "소낙눈": "눈", "많은 소낙눈": "눈", "천둥번개": "천둥", "우박 동반 뇌우": "우박"
+  };
+  function shortCond(name) { return SHORT_COND[name] || name; }
 
   function gradeDust(kind, value) {
     var v = Number(value);
@@ -130,14 +144,48 @@
 
   function setText(id, text) { var n = document.getElementById(id); if (n) n.textContent = text; }
 
+  /* 일주일 예보 (7칸) */
+  function renderWeek(daily) {
+    var row = document.getElementById("wWeekRow");
+    if (!row) return;
+    row.textContent = "";
+    var dates = daily.time || [];
+    if (!dates.length) return;
+
+    dates.slice(0, 7).forEach(function (dateStr, i) {
+      var code = daily.weather_code ? Number(daily.weather_code[i]) : NaN;
+      var info = WMO[code] || ["", "🌡️"];
+      var hi = daily.temperature_2m_max && daily.temperature_2m_max[i] != null ? Math.round(daily.temperature_2m_max[i]) : null;
+      var lo = daily.temperature_2m_min && daily.temperature_2m_min[i] != null ? Math.round(daily.temperature_2m_min[i]) : null;
+      var rain = daily.precipitation_probability_max && daily.precipitation_probability_max[i] != null
+        ? Math.round(daily.precipitation_probability_max[i]) : null;
+
+      var d = new Date(dateStr + "T00:00:00");
+      var dayName = i === 0 ? "오늘" : d.toLocaleDateString("ko-KR", { weekday: "short" }).replace("요일", "");
+      var monthDay = (d.getMonth() + 1) + "/" + d.getDate();
+
+      var cell = el("div", { class: "wd" + (i === 0 ? " today" : "") }, [
+        el("span", { class: "wd-day", text: dayName }),
+        el("span", { class: "wd-date", text: monthDay }),
+        el("span", { class: "wd-ico", text: info[1], "aria-hidden": "true" }),
+        el("span", { class: "wd-cond", text: shortCond(info[0]) }),
+        el("span", { class: "wd-temp" }, [
+          el("b", { text: (hi == null ? "-" : hi) + "°" }),
+          el("i", { text: (lo == null ? "-" : lo) + "°" })
+        ]),
+        el("span", { class: "wd-rain" + (rain != null && rain >= 60 ? " wet" : ""), text: "☔" + (rain == null ? "-" : rain) + "%" })
+      ]);
+      row.appendChild(cell);
+    });
+  }
+
   function renderWeather(data) {
     var cur = data.current || {}, daily = data.daily || {}, air = data.air || {};
     var code = Number(cur.weather_code);
     var info = WMO[code] || ["구름 많음", "🌤️"];
-    setText("wTemp", "");
     var tempNode = $("#wTemp");
     if (tempNode) {
-      tempNode.textContent = Math.round(Number(cur.temperature_2m)) + "";
+      tempNode.textContent = isFinite(Number(cur.temperature_2m)) ? Math.round(Number(cur.temperature_2m)) + "" : "--";
       tempNode.appendChild(el("span", { class: "unit", text: "℃" }));
     }
     setText("wEmoji", info[1]);
@@ -170,10 +218,11 @@
     fillAir("pm10", pm10, l10, 150);
     fillAir("pm25", pm25, l25, 75);
 
+    renderWeek(daily);
+
     setText("wHumid", "습도 " + (cur.relative_humidity_2m != null ? Math.round(cur.relative_humidity_2m) + "%" : "-"));
     setText("wRain", "강수확률 " + (rainProb != null ? Math.round(rainProb) + "%" : "-"));
-    var now = new Date();
-    setText("wUpdated", "업데이트 " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0"));
+    setText("wUpdated", "업데이트 " + hhmm());
   }
 
   function fillAir(kind, value, level, maxBar) {
@@ -210,7 +259,8 @@
     weatherLoading = true;
     var wUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + KIMPO.lat + "&longitude=" + KIMPO.lon +
       "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&" +
-      "daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=1";
+      "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+      "&timezone=Asia%2FSeoul&forecast_days=7";
     var aUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + KIMPO.lat + "&longitude=" + KIMPO.lon +
       "&current=pm10,pm2_5&timezone=Asia%2FSeoul";
 
@@ -247,20 +297,110 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * 3. 뉴스
+   * 3. 뉴스 (연합뉴스 RSS · 스포츠 제외 · 미국 주요 뉴스 · 1시간 자동 업데이트)
    * ------------------------------------------------------------------ */
   var YNA = "https://www.yna.co.kr/rss/";
   var TABS = {
     all: { label: "전체", emoji: "📰", feed: YNA + "news.xml", title: "오늘의 뉴스" },
+    society: { label: "사회", emoji: "🏙️", feed: YNA + "society.xml", title: "사회 뉴스" },
     economy: { label: "경제", emoji: "💰", feed: YNA + "economy.xml", title: "경제 뉴스" },
     politics: { label: "정치", emoji: "🏛️", feed: YNA + "politics.xml", title: "정치 뉴스" },
+    usa: { label: "미국", emoji: "🇺🇸", feed: YNA + "international.xml", title: "미국 주요 뉴스" },
     celeb: { label: "연예", emoji: "🎬", feed: YNA + "entertainment.xml", title: "연예 뉴스" }
   };
-  var NEWS_TTL = 20 * 60 * 1000;
+  var NEWS_TTL = 60 * 60 * 1000; /* 1시간마다 새 뉴스 */
   var PAGE = 12;
-  var state = { tab: "all", items: [], shown: PAGE, note: null, reqId: 0 };
+  var state = { tab: "all", items: [], shown: PAGE, note: null, reqId: 0, lastFetch: 0 };
 
-  function cacheKey(tab) { return "mj_news_v2_" + tab; }
+  function cacheKey(tab) { return "mj_news_v3_" + tab; }
+
+  /* --- 스포츠 기사 거르기 --------------------------------------------- */
+  /* 연합뉴스 기사 주소 끝 4자리가 분야 코드입니다. 0007·1007 이 스포츠입니다. */
+  var SPORTS_CODES = { "0007": 1, "1007": 1, "2007": 1 };
+  var SPORTS_WORDS = [
+    "야구", "축구", "농구", "배구", "골프", "올림픽", "패럴림픽", "월드컵", "K리그", "KBO", "MLB", "NBA", "EPL",
+    "챔피언스리그", "프로야구", "프로농구", "프로배구", "프로축구", "홈런", "타율", "타점", "선발승", "완투", "세이브",
+    "리그", "구단", "코치", "선수단", "선수", "우승", "준우승", "결승", "4강", "8강", "16강", "토너먼트",
+    "경기장", "구장", "야구장", "축구장", "배드민턴", "탁구", "테니스", "수영", "양궁", "펜싱", "유도", "태권도",
+    "역도", "마라톤", "스케이팅", "피겨", "쇼트트랙", "컬링", "핸드볼", "럭비", "볼링", "당구", "체조", "사격",
+    "경마", "씨름", "승마", "대회 우승", "손흥민", "이강인", "김민재", "김하성", "이정후", "류현진", "홈런왕"
+  ];
+
+  /* --- 미국 관련 기사인지 ---------------------------------------------- */
+  var US_WORDS = [
+    "미국", "美", "워싱턴", "백악관", "트럼프", "바이든", "해리스", "연준", "월가", "월스트리트", "뉴욕",
+    "나스닥", "다우", "실리콘밸리", "하원", "상원", "민주당", "공화당", "국무부", "펜타곤", "연방", "캘리포니아",
+    "텍사스", "플로리다", "시카고", "보스턴", "로스앤젤레스", "LA", "관세", "달러", "USTR", "미중", "한미",
+    "주미", "미국인", "뉴저지", "워싱턴포스트", "뉴욕타임스", "매그니피센트7", "엔비디아", "마이크로소프트",
+    "테슬라", "애플", "아마존", "구글", "메타", "오픈AI", "월러", "파월", "JP모건", "골드만", "하원의장",
+    "중간선거", "미시간", "오하이오", "조지아주", "애리조나", "네바다", "펜실베이니아", "일론 머스크", "머스크"
+  ];
+
+  /* 설명글에서만 확인할 때 쓰는 확실한 미국 표지 */
+  var US_STRONG_WORDS = ["미국", "美", "워싱턴", "백악관", "트럼프", "연준", "뉴욕", "월가", "하원", "상원"];
+
+  /* --- 미국이 아닌 다른 나라 기사(전체 탭에서 줄임) --------------------- */
+  var FOREIGN_WORDS = [
+    "일본", "중국", "러시아", "우크라이나", "이란", "이스라엘", "가자", "팔레스타인", "유럽", "프랑스",
+    "독일", "영국", "이탈리아", "스페인", "인도", "파키스탄", "브라질", "멕시코", "캐나다", "호주",
+    "뉴질랜드", "대만", "홍콩", "태국", "베트남", "필리핀", "인도네시아", "말레이시아", "싱가포르", "미얀마",
+    "캄보디아", "북한", "중동", "사우디", "이집트", "튀르키예", "터키", "그리스", "폴란드", "네덜란드",
+    "스웨덴", "노르웨이", "핀란드", "덴마크", "스위스", "오스트리아", "벨기에", "포르투갈", "아르헨티나",
+    "칠레", "콜롬비아", "페루", "남아공", "나이지리아", "케냐", "교황", "바티칸", "아프가니스탄", "시리아",
+    "이라크", "레바논", "예멘", "카타르", "쿠웨이트", "쿠바", "베네수엘라", "하마스", "헤즈볼라", "나토",
+    "EU", "유엔", "도쿄", "베이징", "상하이", "모스크바", "파리", "베를린", "런던", "키이우", "가자지구",
+    "푸틴", "시진핑", "젤렌스키", "네타냐후", "마크롱", "다카이치", "크렘린", "트뤼도", "이시바", "모디",
+    "에르도안", "오르반", "하토야마", "네덜란드", "아세안", "동남아"
+  ];
+
+  function titleOf(it) { return (it && it.title) || ""; }
+  function textOf(it) { return titleOf(it) + " " + ((it && it.desc) || ""); }
+
+  function codeOf(item) {
+    var m = /([A-Za-z0-9]{4})$/.exec((item && item.link) || "");
+    return m ? m[1] : "";
+  }
+
+  function hasWord(text, words) {
+    for (var i = 0; i < words.length; i++) {
+      if (text.indexOf(words[i]) >= 0) return true;
+    }
+    return false;
+  }
+
+  function isSports(item) {
+    if (SPORTS_CODES[codeOf(item)]) return true;
+    return hasWord(titleOf(item), SPORTS_WORDS);
+  }
+
+  function isUS(item) {
+    var t = titleOf(item);
+    if (hasWord(t, US_WORDS)) return true;
+    /* 제목에 없으면 설명까지 살펴봅니다(미국 기사만 놓치지 않게) */
+    return hasWord((item.desc || "").slice(0, 120), US_STRONG_WORDS) && !hasWord(t, FOREIGN_WORDS);
+  }
+
+  /* 한자로 쓴 나라 이름(中·日)은 낱말로 쓰였을 때만 봅니다 */
+  function hasHanjaCountry(t) { return /[中日](?=[\s"'\[\]()·…,]|$)/.test(t); }
+
+  function isForeignOnly(item) {
+    var t = titleOf(item);
+    if (hasWord(t, US_WORDS)) return false;
+    return hasWord(t, FOREIGN_WORDS) || hasHanjaCountry(t);
+  }
+
+  /* 탭에 맞게 기사 거르기: 스포츠는 어디에도 안 나옵니다. */
+  var NOTICE_RE = /^\s*\[(알림|안내|게시판|정정)/;
+
+  function shapeFor(tab, items) {
+    return items.filter(function (it) {
+      if (NOTICE_RE.test(titleOf(it))) return false; /* 공지·사설 기사는 빼고 */
+      if (isSports(it)) return false;
+      if (tab === "usa") return isUS(it);
+      if (tab === "all") return !isForeignOnly(it);
+      return true;
+    });
+  }
 
   function parseRss2Json(text) {
     var d = JSON.parse(text);
@@ -387,6 +527,7 @@
     return (dt.getMonth() + 1) + "월 " + dt.getDate() + "일";
   }
 
+  /* 작은 썸네일 (제목 옆) */
   function thumbNode(item, tab) {
     var fig = el("figure", { class: "thumb" });
     var info = TABS[tab] || TABS.all;
@@ -394,7 +535,7 @@
       fig.textContent = "";
       fig.appendChild(el("div", { class: "thumb-fallback" }, [
         el("span", { class: "tf-emoji", text: info.emoji }),
-        el("span", { class: "tf-text", text: info.label + " 뉴스" })
+        el("span", { class: "tf-text", text: info.label })
       ]));
     }
     if (!item.img) { fallback(); return fig; }
@@ -410,17 +551,18 @@
     var info = TABS[tab] || TABS.all;
     var card = el("article", { class: "news-card" });
     var a = el("a", { href: item.link, target: "_blank", rel: "noopener noreferrer" });
-    a.appendChild(thumbNode(item, tab));
     var meta = el("div", { class: "news-meta" }, [
       el("span", { text: item.source || "연합뉴스" }),
       el("span", { class: "dot", text: "·" }),
       el("span", { text: timeAgo(item.date) }),
       el("span", { class: "open-hint", text: "기사 보기 ▶" })
-    ]);    a.appendChild(el("div", { class: "news-body" }, [
+    ]);
+    a.appendChild(el("div", { class: "news-body" }, [
       el("span", { class: "badge", dataset: { cat: info.label }, text: info.label }),
       el("h3", { class: "news-title", text: item.title }),
       meta
     ]));
+    a.appendChild(thumbNode(item, tab));
     card.appendChild(a);
     return card;
   }
@@ -432,9 +574,11 @@
     list.textContent = "";
     for (var i = 0; i < 3; i++) {
       list.appendChild(el("div", { class: "skeleton" }, [
-        el("div", { class: "sk-img" }),
-        el("div", { class: "sk-line" }),
-        el("div", { class: "sk-line short" })
+        el("div", { class: "sk-body" }, [
+          el("div", { class: "sk-line" }),
+          el("div", { class: "sk-line short" })
+        ]),
+        el("div", { class: "sk-img" })
       ]));
     }
     var more = $("#newsMore");
@@ -452,6 +596,7 @@
     var items = state.items;
     setText("newsTitle", (TABS[state.tab] || TABS.all).title);
     setText("newsCount", items.length ? items.length + "건" : "");
+    setText("newsAuto", "🔄 1시간마다 자동 업데이트" + (state.lastFetch ? " · " + hhmm(state.lastFetch) + " 업데이트" : ""));
 
     items.slice(0, state.shown).forEach(function (item) {
       list.appendChild(newsCard(item, state.tab));
@@ -506,8 +651,9 @@
     var fresh = hasCache && (Date.now() - (cached.ts || 0) < NEWS_TTL);
 
     if (hasCache) {
-      state.items = cached.items;
+      state.items = shapeFor(tab, cached.items);
       state.shown = PAGE;
+      state.lastFetch = cached.ts || 0;
       state.note = fresh ? null : "📡 새 뉴스를 받지 못해 지난번에 받아둔 기사를 보여드려요.";
       renderNews();
       if (fresh && !force) return;
@@ -520,26 +666,38 @@
 
     fetchFeed(cfg.feed).then(function (items) {
       if (reqId !== state.reqId) return; /* 다른 탭으로 옮겨감 */
-      state.items = normalize(items);
+      state.items = shapeFor(tab, normalize(items));
       state.shown = PAGE;
       state.note = null;
+      state.lastFetch = Date.now();
+      if (tab === "usa" && state.items.length < 3) {
+        /* 국제면이 비어 있으면 전체 뉴스에서 미국 기사만 골라 채웁니다 */
+        var allCache = store(cacheKey("all"));
+        if (allCache && allCache.items && allCache.items.length) {
+          var extra = shapeFor("usa", allCache.items);
+          var seen = {};
+          state.items.forEach(function (it) { seen[it.link] = 1; });
+          extra.forEach(function (it) { if (!seen[it.link]) { seen[it.link] = 1; state.items.push(it); } });
+        }
+      }
       store(cacheKey(tab), { ts: Date.now(), items: state.items });
       renderNews();
     }).catch(function () {
       if (reqId !== state.reqId) return;
       var old = store(cacheKey(tab));
       if (old && old.items && old.items.length) {
-        state.items = old.items;
+        state.items = shapeFor(tab, old.items);
+        state.lastFetch = old.ts || 0;
         state.note = "📡 새 뉴스를 받지 못해 지난번에 받아둔 기사를 보여드려요.";
         renderNews();
         return;
       }
-      /* 전용 소식통이 막혔을 때: 오늘의 기사에서 그 분야만 골라 보여드립니다 */
+      /* 전용 소식통이 막혔을 때: 전체 뉴스에서 그 분야만 골라 보여드립니다 */
       var picked = pickByKeywords(tab);
       if (picked) {
         state.items = picked;
         state.shown = PAGE;
-        state.note = "🔎 " + cfg.label + " 전용 소식이 지금 막혀서, 오늘의 기사 중 " + cfg.label + " 소식을 골라 보여드려요.";
+        state.note = "🔎 " + cfg.label + " 전용 소식이 지금 막혀서, 전체 뉴스 중 " + cfg.label + " 소식을 골라 보여드려요.";
         renderNews();
         return;
       }
@@ -549,14 +707,18 @@
 
   var SECTION_LINKS = {
     all: { url: "https://www.yna.co.kr/news", label: "연합뉴스에서 직접 보기" },
+    society: { url: "https://www.yna.co.kr/society/all", label: "연합뉴스 사회면에서 보기" },
     economy: { url: "https://www.yna.co.kr/economy/all", label: "연합뉴스 경제면에서 보기" },
     politics: { url: "https://www.yna.co.kr/politics/all", label: "연합뉴스 정치면에서 보기" },
+    usa: { url: "https://www.yna.co.kr/international/all", label: "연합뉴스 국제면에서 보기" },
     celeb: { url: "https://www.yna.co.kr/entertainment/all", label: "연합뉴스 연예면에서 보기" }
   };
 
   var PICK_WORDS = {
+    society: ["사고", "경찰", "소방", "검찰", "법원", "재판", "구속", "화재", "폭우", "태풍", "날씨", "교통", "사망", "부상", "복지", "교육", "학교", "병원", "의료", "노조", "파업", "환경", "기후", "주민", "지자체", "시청", "도의회", "사건", "피해"],
     economy: ["주가", "증시", "코스피", "코스닥", "환율", "금리", "물가", "수출", "수입", "기업", "반도체", "부동산", "은행", "투자", "경제", "매출", "영업이익", "원화", "유가", "무역", "세금", "예산", "고용", "소비", "가격"],
-    politics: ["대통령", "국회", "정부", "여당", "야당", "장관", "국무", "의원", "선거", "외교", "국방", "경찰", "검찰", "법원", "청문", "북한", "통일", "정당", "대변인", "정치", "특검", "개각"],
+    politics: ["대통령", "국회", "정부", "여당", "야당", "장관", "국무", "의원", "선거", "외교", "국방", "경찰", "검찰", "법원", "청문", "정당", "대변인", "정치", "특검", "개각"],
+    usa: US_WORDS,
     celeb: ["배우", "가수", "아이돌", "드라마", "영화", "예능", "방송", "컴백", "콘서트", "앨범", "시청률", "연기", "오디션", "뮤지컬", "그룹", "K팝", "케이팝", "팬", "연예", "스타", "감독", "출연", "무대", "투어"]
   };
 
@@ -564,16 +726,16 @@
     var words = PICK_WORDS[tab];
     var all = store(cacheKey("all"));
     if (!words || !all || !all.items || !all.items.length) return null;
-    var picked = all.items.filter(function (it) {
+    var picked = shapeFor(tab, all.items.filter(function (it) {
       var t = it.title || "";
       return words.some(function (w) { return t.indexOf(w) >= 0; });
-    });
+    }));
     return picked.length >= 3 ? picked : null;
   }
 
   /* 탭을 눌렀을 때 바로 보이도록 다른 분야 기사를 미리 조용히 받아 둡니다. */
   function prefetchFeeds() {
-    var queue = ["celeb", "economy", "politics"];
+    var queue = ["society", "celeb", "economy", "politics", "usa"];
     var i = 0;
     function next() {
       if (i >= queue.length) return;
@@ -586,13 +748,27 @@
       fetchFeed(TABS[tab].feed).then(function (items) {
         var cur = store(cacheKey(tab));
         if (!cur || !cur.items || !cur.items.length) {
-          store(cacheKey(tab), { ts: Date.now(), items: normalize(items) });
+          store(cacheKey(tab), { ts: Date.now(), items: shapeFor(tab, normalize(items)) });
         }
       }).catch(function () { /* 미리 받기는 실패해도 괜찮습니다 */ })
         .then(function () { setTimeout(next, 12000); });
     }
     setTimeout(next, 7000);
   }
+
+  /* 1시간마다 자동으로 새 뉴스 받기 */
+  function refreshIfStale() {
+    if (document.hidden) return;
+    if (state.tab === "recipe") return; /* 요리 화면에서는 뉴스를 받지 않음 */
+    var last = state.lastFetch || 0;
+    if (Date.now() - last >= NEWS_TTL) loadNews(state.tab, true);
+  }
+  setInterval(refreshIfStale, NEWS_TTL);          /* 60분마다 */
+  setInterval(refreshIfStale, 5 * 60 * 1000);     /* 잠들었다 깨어난 경우 대비 5분마다 확인 */
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) refreshIfStale();
+  });
+  window.addEventListener("focus", refreshIfStale);
 
   /* 탭 */
   var newsRefreshBtn = $("#newsRefresh");
@@ -615,7 +791,7 @@
         if (recipePanel) recipePanel.hidden = false;
         if (weatherCard) weatherCard.hidden = true;
         if (ytBanner) ytBanner.hidden = true;
-        renderRecipes();
+        renderVideos();
         var input = $("#recipeInput");
         if (input) { try { input.focus({ preventScroll: true }); } catch (e) {} }
       } else {
@@ -630,26 +806,26 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * 4. 추천요리
+   * 4. 추천요리 — 유튜브 인기 요리 영상
    * ------------------------------------------------------------------ */
-  var recipes = window.RECIPES || [];
+  var videos = window.COOK_VIDEOS || [];
   var rState = { query: "", kind: "" };
 
   function norm(s) { return String(s || "").replace(/\s+/g, "").toLowerCase(); }
 
-  function matchRecipe(r, q) {
+  function matchVideo(v, q) {
     if (!q) return true;
     var nq = norm(q);
-    if (norm(r.name).indexOf(nq) >= 0) return true;
-    if (norm(r.kind).indexOf(nq) >= 0) return true;
-    if ((r.tags || []).some(function (t) { return norm(t).indexOf(nq) >= 0; })) return true;
-    if ((r.season || []).some(function (t) { return norm(t).indexOf(nq) >= 0; })) return true;
-    if ((r.ingredients || []).some(function (t) { return norm(t).indexOf(nq) >= 0; })) return true;
+    if (norm(v.name).indexOf(nq) >= 0) return true;
+    if (norm(v.title).indexOf(nq) >= 0) return true;
+    if (norm(v.channel).indexOf(nq) >= 0) return true;
+    if (norm(v.kind).indexOf(nq) >= 0) return true;
+    if ((v.tags || []).some(function (t) { return norm(t).indexOf(nq) >= 0; })) return true;
     return false;
   }
 
   var MANGO = "https://www.10000recipe.com/recipe/list.html?q=";
-  var YOUTUBE = "https://www.youtube.com/results?search_query=";
+  var YOUTUBE = "https://m.youtube.com/results?search_query=";
 
   function updateExternalLinks(q) {
     var box = $("#recipeExternal");
@@ -657,153 +833,134 @@
     var word = (q || "").trim();
     box.hidden = !word;
     if (!word) return;
-    var note = box.querySelector(".ext-note");
-    if (note) note.textContent = "‘" + word + "’을 다른 곳에서도 찾아보세요";
-    var mango = $("#extMango");
+    var note = $("#extNote");
+    if (note) note.textContent = "‘" + word + "’ 영상을 유튜브에서 더 찾아보세요";
     var yt = $("#extYoutube");
-    if (mango) {
-      mango.href = MANGO + encodeURIComponent(word);
-      mango.textContent = "🟠 만개의레시피에서 찾기";
-    }
-    if (yt) {
-      yt.href = YOUTUBE + encodeURIComponent(word + " 레시피");
-      yt.textContent = "▶️ 유튜브에서 영상 찾기";
-    }
+    if (yt) yt.href = YOUTUBE + encodeURIComponent(word + " 레시피");
+    var mango = $("#extMango");
+    if (mango) mango.href = MANGO + encodeURIComponent(word);
   }
 
-  function recipeCard(r) {
-    return el("button", {
-      type: "button", class: "recipe-card",
-      on: { click: function () { openRecipe(r); } }
-    }, [
-      el("span", { class: "r-emoji", text: r.emoji, "aria-hidden": "true" }),
-      el("span", { class: "r-body" }, [
-        el("h3", { text: r.name }),
-        el("div", { class: "r-meta", text: r.kind + " · " + r.time + " · " + r.level + " · " + r.serving }),
-        el("div", { class: "r-tags", text: (r.tags || []).slice(0, 5).join(" · ") })
+  function youtubeThumb(v, img, fig) {
+    img.addEventListener("error", function () {
+      if (img.dataset.step !== "1") {
+        img.dataset.step = "1";
+        img.src = "https://i.ytimg.com/vi/" + v.id + "/mqdefault.jpg";
+        return;
+      }
+      fig.textContent = "";
+      fig.appendChild(el("div", { class: "v-thumb-fallback" }, [
+        el("span", { class: "v-play", text: "▶" })
+      ]));
+    });
+  }
+
+  function videoCard(v) {
+    var card = el("a", {
+      class: "video-card",
+      href: "https://www.youtube.com/watch?v=" + v.id,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      "aria-label": v.name + " 요리 영상 보기 (새 창)"
+    });
+    var fig = el("figure", { class: "v-thumb" });
+    var img = el("img", {
+      alt: "", loading: "lazy", decoding: "async",
+      src: "https://i.ytimg.com/vi/" + v.id + "/hqdefault.jpg"
+    });
+    youtubeThumb(v, img, fig);
+    fig.appendChild(img);
+    fig.appendChild(el("span", { class: "v-play", text: "▶" }));
+
+    card.appendChild(fig);
+    card.appendChild(el("div", { class: "v-body" }, [
+      el("div", { class: "v-top" }, [
+        el("span", { class: "v-name", text: v.name }),
+        el("span", { class: "v-kind", text: v.kind })
+      ]),
+      el("div", { class: "v-title", text: v.title }),
+      el("div", { class: "v-bottom" }, [
+        el("span", { class: "v-channel", text: "📺 " + v.channel }),
+        el("span", { class: "v-go", text: "유튜브로 보기 ▶" })
       ])
-    ]);
+    ]));
+    return card;
   }
 
-  function renderRecipes() {
+  function renderVideos() {
     var list = $("#recipeList");
     if (!list) return;
     list.textContent = "";
     var q = rState.query;
     var kind = rState.kind;
-    var shown = recipes.filter(function (r) {
-      if (kind && r.kind !== kind) return false;
-      return matchRecipe(r, q);
+    var shown = videos.filter(function (v) {
+      if (kind && v.kind !== kind) return false;
+      return matchVideo(v, q);
     });
 
-    setText("recipeCount", shown.length + "가지");
-    setText("recipeTitle", q ? "‘" + q + "’ 검색 결과" : (kind || "오늘 뭐 해 먹지?"));
+    setText("recipeCount", shown.length + "개 영상");
+    setText("recipeTitle", q ? "‘" + q + "’ 영상" : (kind || "오늘 뭐 해 먹지?"));
     updateExternalLinks(q);
 
     if (!shown.length) {
       list.appendChild(el("div", { class: "recipe-empty" }, [
         el("span", { class: "big-emoji", text: "🔎" }),
-        el("p", { text: "‘" + q + "’ 요리는 앱 목록에 없어요" }),
-        el("p", { class: "sub", text: "위의 주황색 버튼으로 만개의레시피나 유튜브에서 찾아보세요." }),
+        el("p", { text: "‘" + q + "’ 영상은 여기 목록에 없어요" }),
+        el("p", { class: "sub", text: "아래 초록색 유튜브 버튼을 누르면 유튜브에서 바로 찾아 드려요." }),
+        el("a", {
+          class: "ext-btn youtube",
+          href: YOUTUBE + encodeURIComponent((q || "집밥") + " 레시피"),
+          target: "_blank", rel: "noopener",
+          style: "margin-top:0.75rem",
+          text: "▶️ 유튜브에서 ‘" + (q || "집밥") + "’ 영상 찾기"
+        }),
         el("button", {
-          type: "button", class: "btn ghost", style: "margin-top:0.7rem", text: "전체 요리 보기",
+          type: "button", class: "btn ghost wide", style: "margin-top:0.5rem", text: "전체 영상 보기",
           on: {
             click: function () {
               rState.query = ""; rState.kind = "";
               var input = $("#recipeInput"); if (input) input.value = "";
               $$("#recipeChips button").forEach(function (b) { b.setAttribute("aria-pressed", String(!b.dataset.kind)); });
-              renderRecipes();
+              renderVideos();
             }
           }
         })
       ]));
       return;
     }
-    shown.forEach(function (r) { list.appendChild(recipeCard(r)); });
+    shown.forEach(function (v) { list.appendChild(videoCard(v)); });
   }
 
   var searchBtn = $("#recipeSearchBtn");
   var input = $("#recipeInput");
   function doSearch() {
     rState.query = input ? input.value.trim() : "";
-    renderRecipes();
-    if (rState.query) updateExternalLinks(rState.query);
+    renderVideos();
   }
   if (searchBtn) searchBtn.addEventListener("click", doSearch);
   if (input) {
     input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doSearch(); } });
-    input.addEventListener("search", function () { rState.query = input.value.trim(); renderRecipes(); });
+    input.addEventListener("search", function () { rState.query = input.value.trim(); renderVideos(); });
   }
   $$("#recipeChips button").forEach(function (b) {
     b.addEventListener("click", function () {
       rState.kind = b.dataset.kind || "";
       $$("#recipeChips button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-      renderRecipes();
+      renderVideos();
     });
   });
 
-  /* 레시피 상세 */
-  function openRecipe(r) {
-    var sheet = $("#sheet");
-    var inner = $("#sheetInner");
-    if (!sheet || !inner) return;
-    setText("sheetTitle", r.name);
-    inner.textContent = "";
-
-    inner.appendChild(el("div", { class: "r-hero" }, [
-      el("span", { class: "big", text: r.emoji, "aria-hidden": "true" }),
-      el("div", {}, [
-        el("h3", { text: r.name }),
-        el("div", { class: "meta", text: r.time + " · " + r.level + " · " + r.serving }),
-        el("div", { class: "meta", text: (r.season || []).join("·") + "에 좋아요" })
-      ])
-    ]));
-
-    inner.appendChild(el("div", { class: "sec-title" }, [el("span", { text: "🧺" }), el("span", { text: "재료" })]));
-    inner.appendChild(el("div", { class: "ing-box" }, [
-      el("ul", {}, (r.ingredients || []).map(function (i) { return el("li", { text: i }); }))
-    ]));
-
-    inner.appendChild(el("div", { class: "sec-title" }, [el("span", { text: "👩‍🍳" }), el("span", { text: "만드는 순서" })]));
-    inner.appendChild(el("div", { class: "steps" }, (r.steps || []).map(function (s) {
-      return el("div", { class: "step", text: s });
-    })));
-
-    if (r.tip) inner.appendChild(el("div", { class: "tip-box", text: "💡 " + r.tip }));
-
-    inner.appendChild(el("div", { class: "sheet-actions" }, [
-      el("a", {
-        class: "ext-btn mango", href: MANGO + encodeURIComponent(r.name), target: "_blank", rel: "noopener",
-        text: "🟠 만개의레시피에서 더 보기"
-      }),
-      el("a", {
-        class: "ext-btn youtube", href: YOUTUBE + encodeURIComponent(r.name + " 레시피"), target: "_blank", rel: "noopener",
-        text: "▶️ 유튜브 영상으로 보기"
-      }),
-      el("button", { type: "button", class: "btn wide", text: "닫기", on: { click: closeSheet } })
-    ]));
-
-    sheet.hidden = false;
-    document.body.style.overflow = "hidden";
-    var panel = $("#sheetPanel");
-    if (panel) panel.scrollTop = 0;
-    var closeBtn = $("#sheetClose");
-    if (closeBtn) closeBtn.focus({ preventScroll: true });
-  }
-
+  /* 시트 닫기 (레시피 상세 창) */
   function closeSheet() {
     var sheet = $("#sheet");
     if (!sheet || sheet.hidden) return;
     sheet.hidden = true;
     document.body.style.overflow = "";
   }
-
   var sheetCloseBtn = $("#sheetClose");
   if (sheetCloseBtn) sheetCloseBtn.addEventListener("click", closeSheet);
   var sheet = $("#sheet");
-  if (sheet) {
-    sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
-  }
+  if (sheet) sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
 
   /* ------------------------------------------------------------------ *
@@ -811,7 +968,7 @@
    * ------------------------------------------------------------------ */
   loadWeather(false);
   loadNews("all", false);
-  if (recipes.length) renderRecipes();
+  if (videos.length) renderVideos();
   prefetchFeeds();
 
   /* 서비스 워커 (홈 화면 앱처럼 열기 · 인터넷이 끊겨도 화면 유지) */

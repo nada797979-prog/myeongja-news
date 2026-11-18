@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>명자뉴스 채널</title>
-  <meta name="description" content="김포 날씨와 오늘의 뉴스, 집밥 추천 요리를 큰 글씨로 보는 명자뉴스 채널" />
+  <meta name="description" content="김포 날씨와 오늘의 뉴스, 미국 주요 뉴스, 유튜브 인기 요리 영상을 큰 글씨로 보는 명자뉴스 채널" />
   <meta name="theme-color" content="#12314c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -30,8 +30,10 @@
 
       <nav class="tabs" id="tabs" role="tablist" aria-label="뉴스 종류">
         <button type="button" role="tab" data-tab="all" aria-selected="true">📰 전체</button>
+        <button type="button" role="tab" data-tab="society" aria-selected="false">🏙️ 사회</button>
         <button type="button" role="tab" data-tab="economy" aria-selected="false">💰 경제</button>
         <button type="button" role="tab" data-tab="politics" aria-selected="false">🏛️ 정치</button>
+        <button type="button" role="tab" data-tab="usa" aria-selected="false">🇺🇸 미국</button>
         <button type="button" role="tab" data-tab="celeb" aria-selected="false">🎬 연예</button>
         <button type="button" role="tab" data-tab="recipe" aria-selected="false">🍲 추천요리</button>
       </nav>
@@ -69,6 +71,12 @@
           </div>
         </div>
 
+        <!-- 일주일 예보 -->
+        <div class="w-week" id="wWeek" aria-label="김포 일주일 날씨 예보">
+          <div class="w-week-title">🗓️ 이번 주 날씨 (7일)</div>
+          <div class="w-week-row" id="wWeekRow"></div>
+        </div>
+
         <div class="w-foot">
           <span id="wHumid">습도 --%</span>
           <span id="wRain">강수확률 --%</span>
@@ -90,7 +98,10 @@
       <!-- 뉴스 -->
       <section id="newsPanel" aria-label="뉴스 목록">
         <div class="news-head">
-          <h2 id="newsTitle">오늘의 뉴스</h2>
+          <div class="news-head-left">
+            <h2 id="newsTitle">오늘의 뉴스</h2>
+            <span class="auto-note" id="newsAuto">🔄 1시간마다 자동 업데이트</span>
+          </div>
           <div class="head-right">
             <span class="news-count" id="newsCount"></span>
             <button type="button" class="mini-refresh" id="newsRefresh">↻ 새로고침</button>
@@ -114,17 +125,21 @@
             <button type="button" data-kind="국·찌개" aria-pressed="false">국·찌개</button>
             <button type="button" data-kind="반찬" aria-pressed="false">반찬</button>
             <button type="button" data-kind="볶음·구이" aria-pressed="false">볶음·구이</button>
+            <button type="button" data-kind="찜·조림" aria-pressed="false">찜·조림</button>
             <button type="button" data-kind="밥·면" aria-pressed="false">밥·면</button>
           </div>
           <div class="external-links" id="recipeExternal" hidden>
-            <div class="ext-note">찾는 요리가 없으면 여기서 더 찾아보세요</div>
-            <a class="ext-btn mango" id="extMango" href="#" target="_blank" rel="noopener">🟠 만개의레시피에서 검색</a>
-            <a class="ext-btn youtube" id="extYoutube" href="#" target="_blank" rel="noopener">▶️ 유튜브 요리 영상 보기</a>
+            <div class="ext-note" id="extNote">유튜브에서 더 찾아보세요</div>
+            <a class="ext-btn youtube" id="extYoutube" href="#" target="_blank" rel="noopener">▶️ 유튜브에서 요리 영상 찾기</a>
+            <a class="ext-btn mango" id="extMango" href="#" target="_blank" rel="noopener">🟠 만개의레시피에서 찾기</a>
           </div>
         </div>
 
         <div class="news-head" style="margin-top:0.2rem">
-          <h2 id="recipeTitle">오늘 뭐 해 먹지?</h2>
+          <div class="news-head-left">
+            <h2 id="recipeTitle">오늘 뭐 해 먹지?</h2>
+            <span class="auto-note">🎬 유명 요리 선생님 영상</span>
+          </div>
           <span class="news-count" id="recipeCount"></span>
         </div>
         <div class="recipe-list" id="recipeList"></div>
@@ -154,7 +169,7 @@
       </details>
 
       <p class="foot-note">
-        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스<br />
+        날씨·미세먼지: Open-Meteo · 기사와 사진: 연합뉴스 · 요리 영상: 유튜브<br />
         기사를 누르면 언론사 원문이 새 창에서 열립니다.
       </p>
     </main>
@@ -171,7 +186,7 @@
     </div>
   </div>
 
-  <script src="recipes.js"></script>
+  <script src="videos.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
