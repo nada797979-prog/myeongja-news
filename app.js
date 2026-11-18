@@ -379,7 +379,7 @@
   var NEWS_TTL = 60 * 60 * 1000; /* 1시간마다 새 뉴스 */
   var PAGE = 12;
   var MAX_ITEMS = 60;
-  var NEWS_KEY = "mj_feed_v5_";
+  var NEWS_KEY = "mj_feed_v6_";
   var state = { tab: "all", items: [], shown: PAGE, note: null, reqId: 0, lastFetch: 0 };
 
   function feedCacheKey(src, feed) { return NEWS_KEY + src + "_" + feed; }
@@ -488,11 +488,22 @@
     return m[1] || m[2] || m[3] || "";
   }
 
-  function clean(s) {
-    if (!s) return "";
+  function decodeText(s) {
     var div = document.createElement("div");
     div.innerHTML = s;
-    var t = (div.textContent || "").replace(/\s+/g, " ").trim();
+    return div.textContent || "";
+  }
+
+  /* &amp;#039; 처럼 두 번 감싸인 글자도 풀어서 보여줍니다 */
+  function clean(s) {
+    if (!s) return "";
+    var t = String(s);
+    for (var i = 0; i < 3 && /&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/.test(t); i++) {
+      var next = decodeText(t);
+      if (next === t) break;
+      t = next;
+    }
+    t = t.replace(/\s+/g, " ").trim();
     return t.length > 160 ? t.slice(0, 158) + "…" : t;
   }
 
@@ -616,7 +627,10 @@
         var key = f[0] + "_" + f[1];
         if (out.some(function (o) { return o.key === key; })) return;
         var c = store(feedCacheKey(f[0], f[1]));
-        if (c && c.items && c.items.length) out.push({ key: key, ts: c.ts || 0, items: c.items });
+        if (!c || !c.items || !c.items.length) return;
+        /* 전체 뉴스에서 가져올 때는 제목에 미국 얘기가 있는 기사만 (엉뚱한 기사 방지) */
+        var only = c.items.filter(function (it) { return hasWord(titleOf(it), US_WORDS); });
+        if (only.length) out.push({ key: key, ts: c.ts || 0, items: only });
       });
     }
     return out;
