@@ -16,7 +16,8 @@
 | `manifest.json` | PWA 매니페스트 (`name`/`short_name`: 명자뉴스 채널) |
 | `sw.js` | 서비스 워커 (화면은 캐시, 뉴스·날씨는 새로 받고 실패하면 캐시) |
 | `icon.svg`, `icon-192.png`, `icon-512.png`, `icon-512-maskable.png` | 앱 아이콘 |
-| `preview.png` | 휴대폰 화면(390×844) 미리보기 스크린샷 |
+| `preview.png` | 1차 버전 미리보기 스크린샷 |
+| `preview-v2.png` | 2차 버전 미리보기 (탭 6개 · 5일 예보 · 작은 썸네일 · 유튜브 요리 영상) |
 
 ## 데이터 출처
 
