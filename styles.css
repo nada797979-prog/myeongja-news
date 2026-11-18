@@ -361,7 +361,7 @@ main { padding: 0.35rem 0.7rem 0; }
 .wd-temp { display: flex; gap: 0.1rem; align-items: baseline; line-height: 1.2; }
 .wd-temp b { font-size: 0.74rem; font-weight: 800; color: #fff; }
 .wd-temp i { font-size: 0.66rem; font-weight: 700; font-style: normal; color: #b9d6ef; }
-.wd-rain { font-size: 0.58rem; font-weight: 800; color: #cfe4f7; line-height: 1.2; }
+.wd-rain { font-size: 0.6rem; font-weight: 800; color: #cfe4f7; line-height: 1.25; white-space: nowrap; }
 .wd-rain.wet { color: #ffe08a; }
 
 .w-foot {

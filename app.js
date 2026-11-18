@@ -173,7 +173,10 @@
           el("b", { text: (hi == null ? "-" : hi) + "°" }),
           el("i", { text: (lo == null ? "-" : lo) + "°" })
         ]),
-        el("span", { class: "wd-rain" + (rain != null && rain >= 60 ? " wet" : ""), text: "☔" + (rain == null ? "-" : rain) + "%" })
+        el("span", {
+          class: "wd-rain" + (rain != null && rain >= 60 ? " wet" : ""),
+          text: rain == null ? "비 -" : (rain >= 60 ? "비 " : "") + rain + "%"
+        })
       ]);
       row.appendChild(cell);
     });
