@@ -84,7 +84,7 @@
    * 2. 김포 날씨 + 미세먼지 + 일주일 예보
    * ------------------------------------------------------------------ */
   var KIMPO = { lat: 37.6153, lon: 126.7156 };
-  var WEATHER_CACHE = "mj_weather_v4";
+  var WEATHER_CACHE = "mj_weather_v5";
   var WMO = {
     0: ["맑음", "☀️"], 1: ["대체로 맑음", "🌤️"], 2: ["구름 조금", "⛅"], 3: ["흐림", "☁️"],
     45: ["안개", "🌫️"], 48: ["짙은 안개", "🌫️"],
@@ -144,7 +144,7 @@
 
   function setText(id, text) { var n = document.getElementById(id); if (n) n.textContent = text; }
 
-  /* 일주일 예보 (7칸) */
+  /* 5일 예보 (5칸) */
   function renderWeek(daily) {
     var row = document.getElementById("wWeekRow");
     if (!row) return;
@@ -152,7 +152,7 @@
     var dates = daily.time || [];
     if (!dates.length) return;
 
-    dates.slice(0, 7).forEach(function (dateStr, i) {
+    dates.slice(0, 5).forEach(function (dateStr, i) {
       var code = daily.weather_code ? Number(daily.weather_code[i]) : NaN;
       var info = WMO[code] || ["", "🌡️"];
       var hi = daily.temperature_2m_max && daily.temperature_2m_max[i] != null ? Math.round(daily.temperature_2m_max[i]) : null;
@@ -260,7 +260,7 @@
     var wUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + KIMPO.lat + "&longitude=" + KIMPO.lon +
       "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&" +
       "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-      "&timezone=Asia%2FSeoul&forecast_days=7";
+      "&timezone=Asia%2FSeoul&forecast_days=5";
     var aUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + KIMPO.lat + "&longitude=" + KIMPO.lon +
       "&current=pm10,pm2_5&timezone=Asia%2FSeoul";
 
