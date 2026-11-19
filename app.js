@@ -447,12 +447,21 @@
       row.setAttribute("data-dir", dir);
       priceNode.textContent = fmtWon(r.price);
       priceNode.appendChild(el("span", { class: "won", text: "원" }));
+      changeNode.textContent = "";
       if (dir === "even") {
-        changeNode.textContent = "보합 (0.00%)";
+        changeNode.appendChild(el("span", { class: "s-pct", text: "보합 (0.00%)" }));
       } else {
         var sign = dir === "up" ? "+" : "-";
-        var pctTxt = r.pct == null ? "" : " (" + sign + Math.abs(r.pct).toFixed(2) + "%)";
-        changeNode.textContent = (dir === "up" ? "▲ " : "▼ ") + fmtWon(r.abs) + "원" + pctTxt;
+        changeNode.appendChild(el("span", {
+          class: "s-diff",
+          text: (dir === "up" ? "▲ " : "▼ ") + fmtWon(r.abs) + "원"
+        }));
+        if (r.pct != null) {
+          changeNode.appendChild(el("span", {
+            class: "s-pct",
+            text: "(" + sign + Math.abs(r.pct).toFixed(2) + "%)"
+          }));
+        }
       }
     });
     setText("stockTime", "🕘 " + hhmm(data.ts || Date.now()) + " 기준 · " + data.source +
@@ -1108,6 +1117,19 @@
     setTimeout(function () { newsRefreshBtn.textContent = "↻ 새로고침"; }, 2200);
   });
 
+  /* 고정 헤더(.sticky-top) 높이만큼 빼고 그 구역 맨 위로 스크롤
+     — 탭을 눌렀을 때 맨 위(y=0)가 아니라 '오늘의 뉴스'(또는 요리) 시작 부분으로,
+       제목과 첫 기사가 헤더에 가리지 않게 */
+  function scrollToSection(el) {
+    if (!el) return;
+    var sticky = document.querySelector(".sticky-top");
+    var offset = (sticky ? sticky.offsetHeight : 0) + 8;
+    var top = el.getBoundingClientRect().top +
+      (window.pageYOffset || document.documentElement.scrollTop || 0) - offset;
+    if (top < 0) top = 0;
+    try { window.scrollTo({ top: top, behavior: "smooth" }); } catch (e) { window.scrollTo(0, top); }
+  }
+
   $$("#tabs button").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var tab = btn.dataset.tab;
@@ -1137,7 +1159,13 @@
         renderRhino();
         loadNews(tab, false);
       }
-      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
+      /* 화면을 먼저 바꾼 뒤 그 구역 위치를 재서 그쪽으로 내려가기 */
+      var target = (tab === "recipe") ? recipePanel : newsPanel;
+      if (window.requestAnimationFrame) {
+        requestAnimationFrame(function () { scrollToSection(target); });
+      } else {
+        scrollToSection(target);
+      }
     });
   });
 
@@ -1652,7 +1680,7 @@
       cook.kind = b.dataset.kind || "";
       $$("#recipeChips button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
       renderVideos();
-      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { /* 무시 */ }
+      scrollToSection($("#recipePanel"));
     });
   });
 

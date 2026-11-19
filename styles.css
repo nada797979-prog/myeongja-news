@@ -169,14 +169,16 @@ button { font-family: inherit; }
 
 main { padding: 0.35rem 0.7rem 0; }
 
-/* ---------- 주식 시세 카드 (삼성전자·SK하이닉스) ---------- */
+/* ---------- 주식 시세 카드 (삼성전자·SK하이닉스) ----------
+   2026-11-19: 위아래로 길던 카드를 절반 높이로. 두 종목을 가로 2열에 나란히 놓고
+   종목 이름·현재가·등락률은 그대로 읽히게 (어머님이 보기 편하게) */
 .stocks {
   background: var(--card);
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  padding: 0.6rem 0.75rem 0.55rem;
+  padding: 0.34rem 0.6rem 0.3rem;
   box-shadow: var(--shadow);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
 }
 .s-head {
   display: flex;
@@ -186,69 +188,84 @@ main { padding: 0.35rem 0.7rem 0; }
 }
 .s-head h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.86rem;
   font-weight: 900;
   color: var(--navy);
   letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 .s-refresh {
-  min-height: 2.2rem;
-  padding: 0 0.7rem;
+  min-height: 1.55rem;
+  padding: 0 0.55rem;
   border-radius: 999px;
   border: 2px solid #cfc7b6;
   background: #fff;
   color: #24323f;
-  font-size: 0.76rem;
+  font-size: 0.66rem;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
 }
 .s-list {
-  margin-top: 0.4rem;
+  margin-top: 0.28rem;
   display: grid;
-  gap: 0.4rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.32rem;
 }
 .s-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 14px;
-  padding: 0.45rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+  border-radius: 12px;
+  padding: 0.24rem 0.45rem 0.26rem;
   background: #f7f5f0;
-  border-left: 6px solid #c9c2b3;
+  border-left: 5px solid #c9c2b3;
 }
 .s-name {
-  font-size: 0.98rem;
+  font-size: 0.76rem;
   font-weight: 900;
   color: #24323f;
   letter-spacing: -0.02em;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .s-quote {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0.05rem;
-  text-align: right;
+  align-items: flex-start;
+  gap: 0;
+  text-align: left;
+  min-width: 0;
 }
 .s-price {
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   font-weight: 900;
-  line-height: 1.12;
+  line-height: 1.1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .s-price .won {
-  font-size: 0.82rem;
+  font-size: 0.64rem;
   font-weight: 800;
-  margin-left: 0.1rem;
+  margin-left: 0.08rem;
 }
 .s-change {
-  font-size: 0.92rem;
+  font-size: 0.74rem;
   font-weight: 900;
-  line-height: 1.25;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.22rem;
 }
+.s-change .s-pct { font-weight: 900; }
 .s-row[data-dir="up"] { border-left-color: #d32f2f; background: #fdf3f2; }
 .s-row[data-dir="up"] .s-price,
 .s-row[data-dir="up"] .s-change { color: #cf2027; }
@@ -258,12 +275,12 @@ main { padding: 0.35rem 0.7rem 0; }
 .s-row[data-dir="even"] .s-price { color: #24323f; }
 .s-row[data-dir="even"] .s-change { color: #5b6672; }
 .s-foot {
-  margin-top: 0.35rem;
-  font-size: 0.74rem;
+  margin-top: 0.2rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: var(--muted);
   text-align: right;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 /* ---------- 날씨 카드 ---------- */
