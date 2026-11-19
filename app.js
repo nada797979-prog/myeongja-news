@@ -689,7 +689,7 @@
   /* 탭마다 3~4개 언론사를 섞습니다 (한 번에 너무 많이 받지 않게). */
   var TAB_FEEDS = {
     /* 전체 탭은 사회(속보·사건사고·생활) 기사를 넉넉히 받아 사회 위주로 보여 줍니다. */
-    all: [["yna", "society"], ["sbs", "society"], ["donga", "society"], ["hani", "society"], ["yna", "all"], ["mt", "all"]],
+    all: [["yna", "society"], ["sbs", "society"], ["donga", "society"], ["yna", "all"], ["mt", "all"]],
     society: [["yna", "society"], ["sbs", "society"], ["donga", "society"], ["hani", "society"]],
     economy: [["yna", "economy"], ["mk", "economy"], ["sbs", "economy"], ["hani", "economy"]],
     politics: [["yna", "politics"], ["sbs", "politics"], ["donga", "politics"], ["hani", "politics"]],
@@ -699,7 +699,7 @@
 
   var NEWS_TTL = 5 * 60 * 1000;        /* 5분마다 새 속보 */
   var RESUME_TTL = 3 * 60 * 1000;      /* 화면으로 돌아오면 3분 지났을 때 바로 */
-  var FRESH_LIMIT = 90 * 60 * 1000;    /* 90분 넘게 묵은 응답은 '서버 캐시'로 보고 다른 통로 시도 */
+  var FRESH_LIMIT = 75 * 60 * 1000;    /* 75분 넘게 묵은 응답은 '서버 캐시'로 보고 한 번 더 시도 */
   var PAGE = 12;
   var MAX_ITEMS = 60;
   var NEWS_KEY = "mj_feed_v7_";
@@ -859,7 +859,7 @@
       source: source,
       cat: cat || "",
       date: date || null,
-      rank: date || (now - pos * 10 * 60 * 1000)
+      rank: date || 0
     };
   }
 
@@ -904,30 +904,37 @@
   }
 
   /* 여러 통로에 차례로 물어봅니다.
-     - 주소에 받는 시각(sb=)을 붙여 rss2json·중계 서버의 오래된 캐시를 피합니다.
-     - 90분 넘게 묵은 응답이 오면 그 통로는 버리고 다음 통로를 시도합니다(뉴스가 늦는 주원인). */
+     - rss2json이 가끔 몇 시간 전에 받아 둔 것을 돌려줘서, 그럴 때는 새 표시(sb=)를
+       붙여 한 번 더 요청합니다. 그래도 모두 낡았을 때만 다른 중계 서버를 씁니다. */
   function fetchFeed(url, source, opts) {
     opts = opts || {};
     var cat = opts.cat || "";
     var knownNewest = opts.knownNewest || 0;
-    var stamp = String(Date.now());
-    var bust = url + (url.indexOf("?") >= 0 ? "&" : "?") + "sb=" + stamp;
-    var enc = encodeURIComponent(bust);
+    function bustOf(salt) {
+      return url + (url.indexOf("?") >= 0 ? "&" : "?") + "sb=" + (Date.now() + salt);
+    }
+    var firstEnc = encodeURIComponent(bustOf(0));
+    var secondEnc = encodeURIComponent(bustOf(2711));
+    var thirdEnc = encodeURIComponent(bustOf(5323));
     var providers = [
       function () {
-        return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + enc + "&count=50&_=" + stamp, 8000)
+        return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + firstEnc + "&count=50", 8000)
           .then(function (text) { return parseRss2Json(text, source, cat); });
       },
       function () {
-        return fetchWithTimeout("https://api.allorigins.win/raw?url=" + enc, 8000)
+        return fetchWithTimeout("https://api.rss2json.com/v1/api.json?rss_url=" + secondEnc + "&count=50", 8000)
+          .then(function (text) { return parseRss2Json(text, source, cat); });
+      },
+      function () {
+        return fetchWithTimeout("https://api.allorigins.win/raw?url=" + thirdEnc, 7000)
           .then(function (text) { return parseXmlFeed(text, source, cat); });
       },
       function () {
-        return fetchWithTimeout("https://api.codetabs.com/v1/proxy?quest=" + enc, 8000)
+        return fetchWithTimeout("https://api.codetabs.com/v1/proxy?quest=" + thirdEnc, 7000)
           .then(function (text) { return parseXmlFeed(text, source, cat); });
       },
       function () {
-        return fetchWithTimeout("https://api.cors.lol/?url=" + enc, 8000)
+        return fetchWithTimeout("https://api.cors.lol/?url=" + thirdEnc, 7000)
           .then(function (text) { return parseXmlFeed(text, source, cat); });
       }
     ];
@@ -942,15 +949,18 @@
         items.forEach(function (it) { if (it.date && it.date > newest) newest = it.date; });
         var tooOld = newest && Date.now() - newest > FRESH_LIMIT && (!knownNewest || newest < knownNewest);
         if (tooOld) {
-          if (!stale) stale = items;
+          if (!stale || newest > staleNewest) { stale = items; staleNewest = newest; }
           return null;
         }
         return items;
       }).catch(function () { return null; }).then(function (got) {
         if (got) return got;
+        /* 받아 둔 낡은 기사가 있으면 중계 서버가 죽었는지 오래 기다리지 않고 그걸 씁니다. */
+        if (stale && i >= 1) return stale;
         return attempt(i + 1);
       });
     }
+    var staleNewest = 0;
     return attempt(0);
   }
 
