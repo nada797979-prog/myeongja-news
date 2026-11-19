@@ -1120,14 +1120,43 @@
   /* 고정 헤더(.sticky-top) 높이만큼 빼고 그 구역 맨 위로 스크롤
      — 탭을 눌렀을 때 맨 위(y=0)가 아니라 '오늘의 뉴스'(또는 요리) 시작 부분으로,
        제목과 첫 기사가 헤더에 가리지 않게 */
+  var scrollWatchTimer = null;
+  function stopScrollWatch() {
+    if (scrollWatchTimer === null) return;
+    clearTimeout(scrollWatchTimer.delay);
+    clearInterval(scrollWatchTimer.tick);
+    scrollWatchTimer.events.forEach(function (t) { window.removeEventListener(t, stopScrollWatch); });
+    scrollWatchTimer = null;
+  }
   function scrollToSection(el) {
     if (!el) return;
     var sticky = document.querySelector(".sticky-top");
-    var offset = (sticky ? sticky.offsetHeight : 0) + 8;
-    var top = el.getBoundingClientRect().top +
-      (window.pageYOffset || document.documentElement.scrollTop || 0) - offset;
-    if (top < 0) top = 0;
-    try { window.scrollTo({ top: top, behavior: "smooth" }); } catch (e) { window.scrollTo(0, top); }
+    function wantTop() {
+      var offset = (sticky ? sticky.offsetHeight : 0) + 8;
+      var top = el.getBoundingClientRect().top +
+        (window.pageYOffset || document.documentElement.scrollTop || 0) - offset;
+      return top < 0 ? 0 : top;
+    }
+    function nowY() { return window.pageYOffset || document.documentElement.scrollTop || 0; }
+    function place(behavior) {
+      var top = wantTop();
+      try { window.scrollTo({ top: top, behavior: behavior }); } catch (e) { window.scrollTo(0, top); }
+    }
+    stopScrollWatch();
+    place("smooth");
+    /* 기사 목록·사진이 늦게 자리 잡으면 위쪽 높이가 바뀌어 제목이 헤더에 가려지거나
+       떨어질 수 있음 → 잠깐(1.8초) 동안 한 번씩 다시 맞춤.
+       그 사이 사용자가 손으로 스크롤하면 바로 그만둠. */
+    var stop = ["touchstart", "wheel", "keydown"];
+    scrollWatchTimer = { delay: null, tick: null, events: stop };
+    stop.forEach(function (t) { window.addEventListener(t, stopScrollWatch, { passive: true }); });
+    scrollWatchTimer.delay = setTimeout(function () {
+      if (!scrollWatchTimer) return;
+      scrollWatchTimer.tick = setInterval(function () {
+        if (Math.abs(nowY() - wantTop()) > 2) place("auto");
+      }, 250);
+      setTimeout(stopScrollWatch, 1400);
+    }, 400);
   }
 
   $$("#tabs button").forEach(function (btn) {
