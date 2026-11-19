@@ -1,56 +1,37 @@
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"><title>news debug</title></head>
+<html lang="ko"><head><meta charset="utf-8"><title>proxy debug</title></head>
 <body>
 <pre id="out">running…</pre>
 <script>
-var FEEDS = {
-  yna_society: "https://www.yna.co.kr/rss/society.xml",
-  sbs_society: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03&plink=RSSREADER",
-  donga_society: "https://rss.donga.com/national.xml",
-  hani_society: "https://www.hani.co.kr/rss/society",
-  yna_all: "https://www.yna.co.kr/rss/news.xml",
-  mt_all: "https://rss.mt.co.kr/mt_news.xml"
-};
+var FEED = "https://www.yna.co.kr/rss/society.xml";
 var lines = [];
 function log(s) { lines.push(s); document.getElementById("out").textContent = lines.join("\n"); }
-
-log("now=" + new Date().toISOString());
-log("sw=" + (navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "none"));
-
-try {
-  var keys = Object.keys(localStorage).filter(function (k) { return k.indexOf("mj_feed") === 0; });
-  log("cache keys: " + keys.length);
-  keys.forEach(function (k) {
-    var v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (e) {}
-    var newest = 0, dated = 0;
-    (v && v.items || []).forEach(function (it) { if (it.date) { dated++; if (it.date > newest) newest = it.date; } });
-    log("  " + k + " ts=" + (v && v.ts ? new Date(v.ts).toISOString() : "-") +
-        " n=" + ((v && v.items) || []).length + " dated=" + dated +
-        " newest=" + (newest ? new Date(newest).toISOString() : "none"));
-  });
-} catch (e) { log("cache read err " + e); }
-
-var names = Object.keys(FEEDS);
-function run(i) {
-  if (i >= names.length) { log("done"); return; }
-  var name = names[i];
-  var url = FEEDS[name];
-  var stamp = String(Date.now());
-  var bust = url + (url.indexOf("?") >= 0 ? "&" : "?") + "sb=" + stamp;
-  var api = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(bust) + "&count=50&_=" + stamp;
-  var t0 = Date.now();
-  fetch(api, { cache: "no-store" }).then(function (r) {
-    return r.text().then(function (t) {
-      var d = null; try { d = JSON.parse(t); } catch (e) {}
-      var first = d && d.items && d.items[0] ? (d.items[0].pubDate || "no-date") : "none";
-      var dated = d && d.items ? d.items.filter(function (x) { return !!x.pubDate; }).length : 0;
-      var withImg = d && d.items ? d.items.filter(function (x) { return x.enclosure && x.enclosure.link; }).length : 0;
-      log(name + " http=" + r.status + " ms=" + (Date.now() - t0) + " status=" + (d && d.status) + " items=" + (d && d.items ? d.items.length : 0) + " dated=" + dated + " img=" + withImg + " first=" + first);
-      if (d && d.status !== "ok") log("   msg=" + JSON.stringify(d).slice(0, 160));
-      run(i + 1);
-    });
-  }).catch(function (e) { log(name + " ERR " + e + " ms=" + (Date.now() - t0)); run(i + 1); });
+function probe(label, build) {
+  return function () {
+    var url = build(FEED);
+    var t0 = Date.now();
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      return r.text().then(function (t) {
+        var first = (t.match(/<pubDate>([^<]+)<\/pubDate>/) || [])[1] ||
+                    (t.match(/"pubDate":\s*"([^"]+)"/) || [])[1] || "?";
+        log(label + " http=" + r.status + " ms=" + (Date.now() - t0) + " bytes=" + t.length + " first=" + first + " items=" + (t.match(/<item/g) || []).length);
+      });
+    }).catch(function (e) { log(label + " ERR " + String(e).slice(0, 90) + " ms=" + (Date.now() - t0)); });
+  };
 }
-run(0);
+var stamp = Date.now();
+var bust = FEED + "?sb=" + stamp;
+var enc = encodeURIComponent(bust);
+var tests = [
+  probe("rss2json-nocount", function () { return "https://api.rss2json.com/v1/api.json?rss_url=" + enc; }),
+  probe("codetabs", function () { return "https://api.codetabs.com/v1/proxy?quest=" + enc; }),
+  probe("cors.lol", function () { return "https://api.cors.lol/?url=" + enc; }),
+  probe("corsproxy.io", function () { return "https://corsproxy.io/?url=" + enc; }),
+  probe("jina", function () { return "https://r.jina.ai/" + bust; }),
+  probe("allorigins-get", function () { return "https://api.allorigins.win/get?url=" + enc; })
+];
+var i = 0;
+function next() { if (i >= tests.length) { log("done"); return; } tests[i++]().then(function () { setTimeout(next, 300); }); }
+next();
 </script>
 </body></html>
