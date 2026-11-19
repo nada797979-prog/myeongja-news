@@ -374,45 +374,47 @@ main { padding: 0.35rem 0.7rem 0; }
   line-height: 1.42;
 }
 
-/* 미세먼지 배지 */
+/* 미세먼지 배지 (작고 콤팩트하게) */
 .air-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
 }
 .air {
-  border-radius: 16px;
-  padding: 0.5rem 0.6rem 0.55rem;
+  border-radius: 12px;
+  padding: 0.22rem 0.4rem 0.28rem;
   background: #fff;
   color: var(--ink);
   text-align: center;
-  border: 3px solid var(--good);
+  border: 2px solid var(--good);
+  line-height: 1.2;
 }
 .air .air-label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   font-weight: 800;
   color: var(--muted);
   letter-spacing: -0.01em;
 }
 .air .air-value {
-  display: block;
-  font-size: 1.55rem;
+  display: inline-block;
+  font-size: 1.1rem;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.1;
   color: var(--ink);
 }
-.air .air-value small { font-size: 0.62rem; font-weight: 700; color: var(--muted); }
+.air .air-value small { font-size: 0.5rem; font-weight: 700; color: var(--muted); }
 .air .air-state {
   display: inline-block;
-  margin-top: 0.15rem;
-  padding: 0.1rem 0.6rem;
+  margin-left: 0.25rem;
+  padding: 0 0.4rem;
   border-radius: 999px;
-  font-size: 0.92rem;
+  font-size: 0.68rem;
   font-weight: 800;
   color: #fff;
   background: var(--good);
+  vertical-align: 0.15rem;
 }
 .air[data-level="좋음"] { border-color: var(--good); }
 .air[data-level="좋음"] .air-state { background: var(--good); }
@@ -424,8 +426,8 @@ main { padding: 0.35rem 0.7rem 0; }
 .air[data-level="매우나쁨"] .air-state { background: var(--verybad); }
 .air .air-bar {
   display: block;
-  height: 6px;
-  margin: 0.35rem 0 0;
+  height: 4px;
+  margin: 0.2rem 0 0;
   border-radius: 999px;
   background: #e9e4da;
   overflow: hidden;
@@ -440,6 +442,72 @@ main { padding: 0.35rem 0.7rem 0; }
 .air[data-level="보통"] .air-bar { color: var(--normal); }
 .air[data-level="나쁨"] .air-bar { color: var(--bad); }
 .air[data-level="매우나쁨"] .air-bar { color: var(--verybad); }
+
+/* 내일 날씨 자세히 */
+.w-tomorrow {
+  margin-top: 0.5rem;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 14px;
+  padding: 0.42rem 0.55rem 0.5rem;
+}
+.wtom-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+.wtom-title { font-size: 0.84rem; font-weight: 800; color: #fff; }
+.wtom-temps { font-size: 0.78rem; font-weight: 700; color: #e7f2ff; white-space: nowrap; }
+.wtom-temps b { font-size: 1.02rem; font-weight: 800; color: #fff; }
+.wtom-temps b:last-child { color: #ffd9a0; }
+.wtom-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+.wtom-facts span {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #f2f8ff;
+  white-space: nowrap;
+}
+.wtom-hours {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+.wtom-h {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.02rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  padding: 0.22rem 0.1rem 0.28rem;
+  min-width: 0;
+}
+.wtom-h .h-label { font-size: 0.64rem; font-weight: 800; color: #cfe4f7; }
+.wtom-h .h-emoji { font-size: 1.05rem; line-height: 1.25; }
+.wtom-h .h-temp { font-size: 0.86rem; font-weight: 800; color: #fff; line-height: 1.2; }
+.wtom-h .h-cond { font-size: 0.62rem; font-weight: 700; color: #dcecfb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.wtom-h .h-rain { font-size: 0.62rem; font-weight: 800; color: #cfe4f7; white-space: nowrap; }
+.wtom-h .h-rain.wet { color: #ffe08a; }
+.wtom-note {
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #ffe9b0;
+}
+.wtom-note:empty { display: none; }
 
 /* 일주일 예보 */
 .w-week {
@@ -736,6 +804,8 @@ main { padding: 0.35rem 0.7rem 0; }
 .badge[data-cat="연예"] { background: #b3256e; }
 .badge[data-cat="전체"] { background: #2f6d4f; }
 .badge[data-cat="추천요리"] { background: #b4560d; }
+.badge.breaking-tag { background: #c62828; margin-left: 0.25rem; }
+.news-card.breaking .news-title { color: #a01818; }
 
 .news-title {
   font-size: 1.02rem;

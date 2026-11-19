@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
   <div class="shell">
@@ -96,6 +96,17 @@
           </div>
         </div>
 
+        <!-- 내일 날씨 자세히 -->
+        <div class="w-tomorrow" id="wTomorrow" aria-label="김포 내일 날씨 자세히">
+          <div class="wtom-head">
+            <span class="wtom-title" id="wtomTitle">내일 날씨</span>
+            <span class="wtom-temps" id="wtomTemps">최저 --° · 최고 --°</span>
+          </div>
+          <div class="wtom-facts" id="wtomFacts"></div>
+          <div class="wtom-hours" id="wtomHours"></div>
+          <div class="wtom-note" id="wtomNote"></div>
+        </div>
+
         <!-- 일주일 예보 -->
         <div class="w-week" id="wWeek" aria-label="김포 5일 날씨 예보">
           <div class="w-week-title">🗓️ 앞으로 5일 날씨</div>
@@ -137,8 +148,8 @@
       <section id="newsPanel" aria-label="뉴스 목록">
         <div class="news-head">
           <div class="news-head-left">
-            <h2 id="newsTitle">오늘의 뉴스</h2>
-            <span class="auto-note" id="newsAuto">🔄 1시간마다 자동 업데이트</span>
+            <h2 id="newsTitle">오늘의 속보</h2>
+            <span class="auto-note" id="newsAuto">🔄 5분마다 새 속보</span>
           </div>
           <div class="head-right">
             <span class="news-count" id="newsCount"></span>
@@ -217,6 +228,6 @@
   </div>
 
   <script src="videos.js?v=9"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
