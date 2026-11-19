@@ -2,7 +2,7 @@
    - 화면 파일도 '인터넷 먼저'로 받아 새 버전이 바로 반영되게 (실패하면 저장해 둔 화면 사용)
    - 뉴스·날씨 같은 외부 데이터는 캐시에 담지 않고 항상 새로 받습니다.
      (주소에 붙는 시각 표시 때문에 캐시가 끝없이 쌓이던 문제도 함께 막습니다) */
-const CACHE = "myeongja-news-v16";
+const CACHE = "myeongja-news-v17";
 const SHELL = [
   "./",
   "./index.html",

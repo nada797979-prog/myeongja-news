@@ -1137,7 +1137,7 @@
     var items = state.items;
     setText("newsTitle", (TABS[state.tab] || TABS.all).title);
     setText("newsCount", items.length ? items.length + "건" : "");
-    setText("newsAuto", "🔄 5분마다 새 속보" + (state.lastFetch ? " · " + hhmm(state.lastFetch) + " 업데이트" : ""));
+    setText("newsAuto", "🔄 5분마다 새 속보" + (state.lastFetch ? " · " + hhmm(state.lastFetch) + " 갱신" : ""));
 
     items.slice(0, state.shown).forEach(function (item) {
       list.appendChild(newsCard(item, state.tab));

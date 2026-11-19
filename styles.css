@@ -711,9 +711,10 @@ main { padding: 0.35rem 0.7rem 0; }
 /* ---------- 뉴스 ---------- */
 .news-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.3rem 0.5rem;
   margin: 0.2rem 0.2rem 0.55rem;
 }
 .news-head h2 {
@@ -722,19 +723,23 @@ main { padding: 0.35rem 0.7rem 0; }
   font-weight: 800;
   letter-spacing: -0.02em;
 }
-.news-head-left { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+.news-head-left { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; flex: 1 1 auto; }
 .auto-note {
   font-size: 0.68rem;
   color: #6d7a88;
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .news-head .news-count {
   font-size: 0.76rem;
   color: var(--muted);
   font-weight: 700;
+  white-space: nowrap;
 }
-.head-right { display: flex; align-items: center; gap: 0.45rem; }
+.head-right { display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
 .mini-refresh {
   min-height: 2.2rem;
   padding: 0 0.7rem;
