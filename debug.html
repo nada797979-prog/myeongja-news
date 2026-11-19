@@ -1,37 +1,39 @@
 <!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8"><title>proxy debug</title></head>
+<html lang="ko"><head><meta charset="utf-8"><title>proxy debug2</title></head>
 <body>
 <pre id="out">running…</pre>
 <script>
 var FEED = "https://www.yna.co.kr/rss/society.xml";
 var lines = [];
 function log(s) { lines.push(s); document.getElementById("out").textContent = lines.join("\n"); }
-function probe(label, build) {
-  return function () {
-    var url = build(FEED);
-    var t0 = Date.now();
-    return fetch(url, { cache: "no-store" }).then(function (r) {
-      return r.text().then(function (t) {
-        var first = (t.match(/<pubDate>([^<]+)<\/pubDate>/) || [])[1] ||
-                    (t.match(/"pubDate":\s*"([^"]+)"/) || [])[1] || "?";
-        log(label + " http=" + r.status + " ms=" + (Date.now() - t0) + " bytes=" + t.length + " first=" + first + " items=" + (t.match(/<item/g) || []).length);
-      });
-    }).catch(function (e) { log(label + " ERR " + String(e).slice(0, 90) + " ms=" + (Date.now() - t0)); });
-  };
+function probe(label, url) {
+  var t0 = Date.now();
+  var ctrl = new AbortController();
+  var timer = setTimeout(function () { ctrl.abort(); }, 9000);
+  return fetch(url, { cache: "no-store", signal: ctrl.signal }).then(function (r) {
+    return r.text().then(function (t) {
+      clearTimeout(timer);
+      var first = (t.match(/<pubDate>([^<]+)<\/pubDate>/) || [])[1] ||
+                  (t.match(/"pubDate":\s*"([^"]+)"/) || [])[1] || "?";
+      log(label + " http=" + r.status + " ms=" + (Date.now() - t0) + " bytes=" + t.length + " first=" + first);
+    });
+  }).catch(function (e) { clearTimeout(timer); log(label + " ERR " + String(e).slice(0, 80) + " ms=" + (Date.now() - t0)); });
 }
 var stamp = Date.now();
 var bust = FEED + "?sb=" + stamp;
 var enc = encodeURIComponent(bust);
-var tests = [
-  probe("rss2json-nocount", function () { return "https://api.rss2json.com/v1/api.json?rss_url=" + enc; }),
-  probe("codetabs", function () { return "https://api.codetabs.com/v1/proxy?quest=" + enc; }),
-  probe("cors.lol", function () { return "https://api.cors.lol/?url=" + enc; }),
-  probe("corsproxy.io", function () { return "https://corsproxy.io/?url=" + enc; }),
-  probe("jina", function () { return "https://r.jina.ai/" + bust; }),
-  probe("allorigins-get", function () { return "https://api.allorigins.win/get?url=" + enc; })
+var jobs = [
+  probe("direct", bust + "&x=1"),
+  probe("codetabs", "https://api.codetabs.com/v1/proxy?quest=" + enc),
+  probe("cors.lol", "https://api.cors.lol/?url=" + enc),
+  probe("corsproxy.io", "https://corsproxy.io/?url=" + enc),
+  probe("jina", "https://r.jina.ai/" + bust),
+  probe("allorigins-get", "https://api.allorigins.win/get?url=" + enc),
+  probe("rss2json", "https://api.rss2json.com/v1/api.json?rss_url=" + enc)
 ];
-var i = 0;
-function next() { if (i >= tests.length) { log("done"); return; } tests[i++]().then(function () { setTimeout(next, 300); }); }
-next();
+function checkAll() {
+  if (lines.length >= jobs.length) { log("done"); } else { setTimeout(checkAll, 500); }
+}
+Promise.all(jobs).then(function () { log("done"); });
 </script>
 </body></html>
