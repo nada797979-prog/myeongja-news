@@ -273,6 +273,9 @@ main { padding: 0.35rem 0.7rem 0; }
   .s-price { font-size: 1.05rem; }
   .s-change { font-size: 0.68rem; }
   .s-foot { font-size: 0.6rem; }
+  .s-row { padding-left: 0.34rem; padding-right: 0.34rem; }
+  /* 아주 큰 글씨 모드에서는 칸이 좁아지므로 현재가를 조금 줄여 넘치지 않게 */
+  html[data-size="xlarge"] .s-price { font-size: 0.98rem; }
 }
 .s-row[data-dir="up"] { border-left-color: #d32f2f; background: #fdf3f2; }
 .s-row[data-dir="up"] .s-price,
