@@ -1005,13 +1005,18 @@
     return (b.date || b.rank || 0) - (a.date || a.rank || 0);
   }
 
-  /* 최신순 그대로 보되, 사회 기사 3건마다 다른 분야 1건만 섞습니다(전체 탭). */
+  /* 최신순 그대로 보되, 사회 기사 3건마다 다른 분야 1건만 섞습니다(전체 탭).
+     · 다른 분야 기사는 가장 새 기사에서 2시간 안의 것만 섞습니다(묵은 기사가 끼지 않게). */
   function societyFirst(items, limit) {
     var social = [];
     var others = [];
     items.forEach(function (it) { (isSocietyNews(it) ? social : others).push(it); });
     social.sort(latestFirst);
     others.sort(latestFirst);
+    var newest = 0;
+    items.forEach(function (it) { var t = it.date || it.rank || 0; if (t > newest) newest = t; });
+    var cut = newest ? newest - 2 * 60 * 60 * 1000 : 0;
+    if (cut) others = others.filter(function (it) { return (it.date || it.rank || 0) >= cut; });
     var out = [];
     var s = 0;
     var o = 0;
