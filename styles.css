@@ -176,7 +176,7 @@ main { padding: 0.35rem 0.7rem 0; }
   background: var(--card);
   border: 2px solid var(--line);
   border-radius: var(--radius);
-  padding: 0.34rem 0.6rem 0.3rem;
+  padding: 0.3rem 0.58rem 0.26rem;
   box-shadow: var(--shadow);
   margin-bottom: 0.6rem;
 }
@@ -195,8 +195,8 @@ main { padding: 0.35rem 0.7rem 0; }
   line-height: 1.3;
 }
 .s-refresh {
-  min-height: 1.55rem;
-  padding: 0 0.55rem;
+  min-height: 1.45rem;
+  padding: 0 0.5rem;
   border-radius: 999px;
   border: 2px solid #cfc7b6;
   background: #fff;
@@ -207,7 +207,7 @@ main { padding: 0.35rem 0.7rem 0; }
   white-space: nowrap;
 }
 .s-list {
-  margin-top: 0.28rem;
+  margin-top: 0.22rem;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.32rem;
@@ -219,7 +219,7 @@ main { padding: 0.35rem 0.7rem 0; }
   gap: 0;
   min-width: 0;
   border-radius: 12px;
-  padding: 0.24rem 0.45rem 0.26rem;
+  padding: 0.2rem 0.4rem 0.22rem;
   background: #f7f5f0;
   border-left: 5px solid #c9c2b3;
 }
@@ -266,6 +266,14 @@ main { padding: 0.35rem 0.7rem 0; }
   column-gap: 0.22rem;
 }
 .s-change .s-pct { font-weight: 900; }
+
+/* 좁은 휴대폰(360px 안짝)에서도 두 칸에 한 줄로 들어가게 */
+@media (max-width: 420px) {
+  .s-name { font-size: 0.72rem; }
+  .s-price { font-size: 1.05rem; }
+  .s-change { font-size: 0.68rem; }
+  .s-foot { font-size: 0.6rem; }
+}
 .s-row[data-dir="up"] { border-left-color: #d32f2f; background: #fdf3f2; }
 .s-row[data-dir="up"] .s-price,
 .s-row[data-dir="up"] .s-change { color: #cf2027; }
@@ -275,7 +283,7 @@ main { padding: 0.35rem 0.7rem 0; }
 .s-row[data-dir="even"] .s-price { color: #24323f; }
 .s-row[data-dir="even"] .s-change { color: #5b6672; }
 .s-foot {
-  margin-top: 0.2rem;
+  margin-top: 0.15rem;
   font-size: 0.64rem;
   font-weight: 700;
   color: var(--muted);
