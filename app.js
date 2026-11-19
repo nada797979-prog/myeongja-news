@@ -360,6 +360,7 @@
     weatherLoading = true;
     var wUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + KIMPO.lat + "&longitude=" + KIMPO.lon +
       "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&" +
+      "&hourly=temperature_2m,weather_code,precipitation_probability,precipitation&" +
       "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max," +
       "precipitation_sum,wind_speed_10m_max,apparent_temperature_max,apparent_temperature_min" +
       "&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=5";
