@@ -237,25 +237,6 @@
       temps.appendChild(el("b", { text: hi == null ? "-" : Math.round(hi) + "°" }));
     }
 
-    var facts = document.getElementById("wtomFacts");
-    if (facts) {
-      facts.textContent = "";
-      var list = [];
-      var code = numAt(daily.weather_code, 1);
-      if (code != null) {
-        var info = WMO[code] || ["", "🌡️"];
-        list.push(info[1] + " " + shortCond(info[0]));
-      }
-      list.push("☔ 강수확률 " + (rainProb == null ? "-" : Math.round(rainProb) + "%"));
-      if (rainSum != null) list.push("💧 비 " + (Math.round(rainSum * 10) / 10) + "mm");
-      if (wind != null) list.push("💨 바람 " + (Math.round(wind * 10) / 10) + "m/s");
-      if (feelsLo != null || feelsHi != null) {
-        list.push("🌡️ 체감 " + (feelsLo == null ? "-" : Math.round(feelsLo) + "°") +
-          "~" + (feelsHi == null ? "-" : Math.round(feelsHi) + "°"));
-      }
-      list.forEach(function (t) { facts.appendChild(el("span", { text: t })); });
-    }
-
     var hoursBox = document.getElementById("wtomHours");
     if (hoursBox) {
       hoursBox.textContent = "";
@@ -321,8 +302,6 @@
     renderTomorrow(daily, data.hourly || {});
     renderWeek(daily);
 
-    setText("wHumid", "습도 " + (cur.relative_humidity_2m != null ? Math.round(cur.relative_humidity_2m) + "%" : "-"));
-    setText("wRain", "강수확률 " + (rainProb != null ? Math.round(rainProb) + "%" : "-"));
     setText("wUpdated", "업데이트 " + hhmm());
   }
 
